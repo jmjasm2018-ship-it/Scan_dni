@@ -4,8 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Consulta y Registro DNI - RENIEC</title>
-
-  <!-- SheetJS para exportar a Excel (.xlsx) -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
   <style>
@@ -23,269 +21,70 @@
       --radius: 12px;
     }
 
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-    }
-
-    body {
-      background-color: var(--bg-color);
-      color: var(--text-dark);
-      padding: 1rem;
-      min-height: 100vh;
-    }
-
-    .container {
-      max-width: 1100px;
-      margin: 0 auto;
-      display: flex;
-      flex-direction: column;
-      gap: 1.5rem;
-    }
-
-    header {
-      background: linear-gradient(135deg, #a5d6a7, #c8e6c9);
-      padding: 1.5rem;
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      display: flex;
-      flex-direction: column;
-      gap: 0.5rem;
-      border: 1px solid var(--border-color);
-    }
-
-    header h1 {
-      font-size: 1.6rem;
-      color: var(--text-dark);
-    }
-
-    header p {
-      font-size: 0.9rem;
-      color: #2c5d31;
-    }
-
-    .card {
-      background: var(--card-bg);
-      padding: 1.5rem;
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      border: 1px solid var(--border-color);
-    }
-
-    .config-box {
-      margin-top: 0.5rem;
-      display: flex;
-      gap: 0.5rem;
-      align-items: center;
-      flex-wrap: wrap;
-    }
-
-    .config-box input {
-      flex: 1;
-      min-width: 250px;
-      padding: 0.6rem 0.8rem;
-      border: 1px solid var(--border-color);
-      border-radius: 6px;
-      font-size: 0.85rem;
-    }
-
-    .search-grid {
-      display: grid;
-      grid-template-columns: 1fr auto;
-      gap: 1rem;
-      align-items: flex-end;
-    }
-
-    @media (max-width: 600px) {
-      .search-grid {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    .input-group {
-      display: flex;
-      flex-direction: column;
-      gap: 0.4rem;
-    }
-
-    label {
-      font-size: 0.85rem;
-      font-weight: 600;
-      color: var(--primary);
-    }
-
-    input[type="text"] {
-      width: 100%;
-      padding: 0.8rem 1rem;
-      border: 2px solid var(--border-color);
-      border-radius: 8px;
-      font-size: 1rem;
-      outline: none;
-      transition: border-color 0.2s;
-    }
-
-    input[type="text"]:focus {
-      border-color: var(--accent);
-    }
-
-    .btn {
-      background-color: var(--accent);
-      color: white;
-      border: none;
-      padding: 0.82rem 1.5rem;
-      border-radius: 8px;
-      font-weight: 600;
-      font-size: 0.95rem;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.5rem;
-      transition: background 0.2s, transform 0.1s;
-    }
-
-    .btn:hover {
-      background-color: var(--accent-hover);
-    }
-
-    .btn:active {
-      transform: scale(0.98);
-    }
-
-    .btn-excel {
-      background-color: #1e7e34;
-    }
-
-    .btn-excel:hover {
-      background-color: #145a23;
-    }
-
-    /* Tarjeta de Resultado */
-    .result-card {
-      display: none;
-      background: var(--primary-light);
-      border-left: 5px solid var(--accent);
-      animation: fadeIn 0.3s ease-in-out;
-    }
-
-    .result-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 1rem;
-      margin-top: 1rem;
-    }
-
-    .data-item {
-      display: flex;
-      flex-direction: column;
-      gap: 0.2rem;
-    }
-
-    .data-item span.label {
-      font-size: 0.75rem;
-      color: var(--text-muted);
-      text-transform: uppercase;
-      font-weight: 600;
-    }
-
-    .data-item span.value {
-      font-size: 0.95rem;
-      font-weight: 600;
-      color: var(--text-dark);
-    }
-
-    /* Tabla interactiva */
-    .table-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 1rem;
-      flex-wrap: wrap;
-      gap: 0.5rem;
-    }
-
-    .table-container {
-      overflow-x: auto;
-      border-radius: 8px;
-      border: 1px solid var(--border-color);
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      min-width: 700px;
-      background: white;
-      font-size: 0.88rem;
-    }
-
-    th, td {
-      padding: 0.75rem 1rem;
-      text-align: left;
-      border-bottom: 1px solid var(--border-color);
-    }
-
-    th {
-      background-color: var(--primary-light);
-      color: var(--primary);
-      font-weight: 700;
-    }
-
-    tbody tr:hover {
-      background-color: #f9fdf9;
-    }
-
-    .badge {
-      background: #e8f5e9;
-      color: var(--primary);
-      padding: 0.2rem 0.5rem;
-      border-radius: 4px;
-      font-size: 0.75rem;
-      font-weight: 600;
-    }
-
-    .empty-state {
-      text-align: center;
-      padding: 2rem;
-      color: var(--text-muted);
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(-5px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
+    body { background-color: var(--bg-color); color: var(--text-dark); padding: 1rem; min-height: 100vh; }
+    .container { max-width: 1100px; margin: 0 auto; display: flex; flex-direction: column; gap: 1.5rem; }
+    header { background: linear-gradient(135deg, #a5d6a7, #c8e6c9); padding: 1.5rem; border-radius: var(--radius); box-shadow: var(--shadow); border: 1px solid var(--border-color); }
+    header h1 { font-size: 1.6rem; color: var(--text-dark); }
+    header p { font-size: 0.9rem; color: #2c5d31; margin-bottom: 0.5rem; }
+    .card { background: var(--card-bg); padding: 1.5rem; border-radius: var(--radius); box-shadow: var(--shadow); border: 1px solid var(--border-color); }
+    .config-box { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+    .config-box input { flex: 1; min-width: 250px; padding: 0.6rem 0.8rem; border: 1px solid var(--border-color); border-radius: 6px; font-size: 0.85rem; }
+    .search-grid { display: grid; grid-template-columns: 1fr auto; gap: 1rem; align-items: flex-end; }
+    @media (max-width: 600px) { .search-grid { grid-template-columns: 1fr; } }
+    .input-group { display: flex; flex-direction: column; gap: 0.4rem; }
+    label { font-size: 0.85rem; font-weight: 600; color: var(--primary); }
+    input[type="text"] { width: 100%; padding: 0.8rem 1rem; border: 2px solid var(--border-color); border-radius: 8px; font-size: 1rem; outline: none; }
+    input[type="text"]:focus { border-color: var(--accent); }
+    .btn { background-color: var(--accent); color: white; border: none; padding: 0.82rem 1.5rem; border-radius: 8px; font-weight: 600; font-size: 0.95rem; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; }
+    .btn:hover { background-color: var(--accent-hover); }
+    .btn-excel { background-color: #1e7e34; }
+    .btn-excel:hover { background-color: #145a23; }
+    
+    .result-card { display: none; background: var(--primary-light); border-left: 5px solid var(--accent); }
+    .result-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 1rem; }
+    .data-item { display: flex; flex-direction: column; gap: 0.2rem; }
+    .data-item span.label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600; }
+    .data-item span.value { font-size: 0.95rem; font-weight: 600; color: var(--text-dark); }
+    
+    .table-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem; }
+    .table-container { overflow-x: auto; border-radius: 8px; border: 1px solid var(--border-color); }
+    table { width: 100%; border-collapse: collapse; min-width: 700px; background: white; font-size: 0.88rem; }
+    th, td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid var(--border-color); }
+    th { background-color: var(--primary-light); color: var(--primary); font-weight: 700; }
+    .badge { background: #e8f5e9; color: var(--primary); padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
+    .empty-state { text-align: center; padding: 2rem; color: var(--text-muted); }
+    
+    /* Alerta de error */
+    .error-msg { display: none; margin-top: 1rem; padding: 0.8rem; background-color: #ffebee; color: #c62828; border-radius: 8px; border: 1px solid #ef9a9a; font-size: 0.9rem; }
   </style>
 </head>
 <body>
 
   <div class="container">
-    
-    <!-- Encabezado -->
     <header>
       <h1>🔎 Consulta de DNI - RENIEC</h1>
       <p>Busca información de identidad, almacénala localmente y expórtala a Excel.</p>
       
       <div class="config-box">
         <label for="apiToken">Token API:</label>
-        <input type="text" id="apiToken" placeholder="Ingresa tu token de autorización aquí">
+        <input type="text" id="apiToken" placeholder="Pega aquí tu Bearer Token">
       </div>
     </header>
 
-    <!-- Búsqueda -->
     <section class="card">
       <form id="searchForm" class="search-grid">
         <div class="input-group">
           <label for="dniInput">Número de DNI</label>
-          <input type="text" id="dniInput" maxlength="8" placeholder="Ej. 44078625" pattern="\d{8}" required>
+          <input type="text" id="dniInput" maxlength="8" placeholder="Ej. 48134465" pattern="\d{8}" required>
         </div>
-        <button type="submit" class="btn" id="btnBuscar">
-          🔍 Buscar DNI
-        </button>
+        <button type="submit" class="btn" id="btnBuscar">🔍 Buscar DNI</button>
       </form>
+
+      <div class="error-msg" id="errorMsg"></div>
     </section>
 
-    <!-- Vista Previa del Resultado -->
+    <!-- Resultado -->
     <section class="card result-card" id="resultCard">
       <div style="display: flex; justify-content: space-between; align-items: center;">
         <h3>Resultado de la Búsqueda</h3>
@@ -293,40 +92,20 @@
       </div>
 
       <div class="result-grid">
-        <div class="data-item">
-          <span class="label">Nombres</span>
-          <span class="value" id="resNombres">-</span>
-        </div>
-        <div class="data-item">
-          <span class="label">Apellido Paterno</span>
-          <span class="value" id="resApePaterno">-</span>
-        </div>
-        <div class="data-item">
-          <span class="label">Apellido Materno</span>
-          <span class="value" id="resApeMaterno">-</span>
-        </div>
-        <div class="data-item">
-          <span class="label">Dirección</span>
-          <span class="value" id="resDireccion">-</span>
-        </div>
-        <div class="data-item">
-          <span class="label">Ubicación (Dpto / Prov / Dist)</span>
-          <span class="value" id="resUbicacion">-</span>
-        </div>
-        <div class="data-item">
-          <span class="label">Ubigeo</span>
-          <span class="value" id="resUbigeo">-</span>
-        </div>
+        <div class="data-item"><span class="label">Nombres</span><span class="value" id="resNombres">-</span></div>
+        <div class="data-item"><span class="label">Apellido Paterno</span><span class="value" id="resApePaterno">-</span></div>
+        <div class="data-item"><span class="label">Apellido Materno</span><span class="value" id="resApeMaterno">-</span></div>
+        <div class="data-item"><span class="label">Dirección</span><span class="value" id="resDireccion">-</span></div>
+        <div class="data-item"><span class="label">Ubicación (Dpto / Prov / Dist)</span><span class="value" id="resUbicacion">-</span></div>
+        <div class="data-item"><span class="label">Ubigeo</span><span class="value" id="resUbigeo">-</span></div>
       </div>
     </section>
 
-    <!-- Tabla de Registros Guardados -->
+    <!-- Tabla -->
     <section class="card">
       <div class="table-header">
         <h3>📋 Registros Acumulados (<span id="totalRecords">0</span>)</h3>
-        <button class="btn btn-excel" id="btnExport">
-          📊 Exportar a Excel
-        </button>
+        <button class="btn btn-excel" id="btnExport">📊 Exportar a Excel</button>
       </div>
 
       <div class="table-container">
@@ -352,46 +131,47 @@
         </table>
       </div>
     </section>
-
   </div>
 
   <script>
-    // Arreglo local para mantener los registros acumulados
     let listaRegistros = [];
 
-    // Función principal para la petición API
-    const consultarDNI = async (dni, token) => {
-      const response = await fetch(`https://miapi.cloud/v1/dni/${dni}`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error(`Error en la consulta (Código HTTP: ${response.status})`);
-      }
-
-      const data = await response.json();
-      return data;
-    };
-
-    // Referencias al DOM
     const searchForm = document.getElementById('searchForm');
     const dniInput = document.getElementById('dniInput');
     const apiTokenInput = document.getElementById('apiToken');
     const btnBuscar = document.getElementById('btnBuscar');
     const resultCard = document.getElementById('resultCard');
+    const errorMsg = document.getElementById('errorMsg');
 
-    // Manejador del evento de consulta
+    // Mapeo flexible de datos (por si la API usa nombres de campos alternativos)
+    function normalizarDatos(data, dniConsultado) {
+      const dom = data.domiciliado || data.direccion || {};
+      
+      return {
+        dni: data.dni || data.numero || dniConsultado,
+        nombres: data.nombres || data.nombre || '-',
+        ape_paterno: data.ape_paterno || data.apellidoPaterno || data.apellido_paterno || '-',
+        ape_materno: data.ape_materno || data.apellidoMaterno || data.apellido_materno || '-',
+        direccion: dom.direccion || (typeof dom === 'string' ? dom : '-'),
+        distrito: dom.distrito || data.distrito || '-',
+        provincia: dom.provincia || data.provincia || '-',
+        departamento: dom.departamento || data.departamento || '-',
+        ubigeo: dom.ubigeo || data.ubigeo || '-'
+      };
+    }
+
     searchForm.addEventListener('submit', async (e) => {
       e.preventDefault();
+      
+      // Limpiar errores y ocultar tarjeta previa
+      errorMsg.style.display = 'none';
+      resultCard.style.display = 'none';
+
       const dni = dniInput.value.trim();
       const token = apiTokenInput.value.trim();
 
-      if (dni.length !== 8) {
-        alert("El DNI debe tener exactamente 8 dígitos.");
+      if (!token) {
+        mostrarError("Por favor, ingresa el Token de la API en la parte superior.");
         return;
       }
 
@@ -399,76 +179,89 @@
       btnBuscar.textContent = "Buscando...";
 
       try {
-        const data = await consultarDNI(dni, token);
+        const response = await fetch(`https://miapi.cloud/v1/dni/${dni}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/json'
+          }
+        });
+
+        if (!response.ok) {
+          if (response.status === 401) throw new Error("Token no válido o expirado (Error 401).");
+          if (response.status === 404) throw new Error("DNI no encontrado o URL incorrecta (Error 404).");
+          throw new Error(`Error en el servidor de la API (${response.status})`);
+        }
+
+        const rawData = await response.json();
+
+        // Validar si la respuesta viene vacía o con error interno
+        if (!rawData || rawData.error) {
+          throw new Error(rawData.error || "No se obtuvieron datos para el DNI consultado.");
+        }
+
+        const data = normalizarDatos(rawData, dni);
+        
         mostrarResultado(data);
         guardarEnLista(data);
+
       } catch (error) {
-        alert("Ocurrió un error al consultar: " + error.message);
+        mostrarError(error.message);
       } finally {
         btnBuscar.disabled = false;
         btnBuscar.innerHTML = "🔍 Buscar DNI";
       }
     });
 
-    // Muestra el resultado individual en la tarjeta desplegable
+    function mostrarError(mensaje) {
+      errorMsg.textContent = "⚠️ " + mensaje;
+      errorMsg.style.display = 'block';
+    }
+
     function mostrarResultado(data) {
-      document.getElementById('resDniBadge').textContent = `DNI: ${data.dni || '-'}`;
-      document.getElementById('resNombres').textContent = data.nombres || '-';
-      document.getElementById('resApePaterno').textContent = data.ape_paterno || '-';
-      document.getElementById('resApeMaterno').textContent = data.ape_materno || '-';
-      
-      const dom = data.domiciliado || {};
-      document.getElementById('resDireccion').textContent = dom.direccion || '-';
-      document.getElementById('resUbicacion').textContent = `${dom.departamento || ''} / ${dom.provincia || ''} / ${dom.distrito || ''}`;
-      document.getElementById('resUbigeo').textContent = dom.ubigeo || '-';
+      document.getElementById('resDniBadge').textContent = `DNI: ${data.dni}`;
+      document.getElementById('resNombres').textContent = data.nombres;
+      document.getElementById('resApePaterno').textContent = data.ape_paterno;
+      document.getElementById('resApeMaterno').textContent = data.ape_materno;
+      document.getElementById('resDireccion').textContent = data.direccion;
+      document.getElementById('resUbicacion').textContent = `${data.departamento} / ${data.provincia} / ${data.distrito}`;
+      document.getElementById('resUbigeo').textContent = data.ubigeo;
 
       resultCard.style.display = 'block';
     }
 
-    // Guarda el registro en la lista y actualiza la tabla
     function guardarEnLista(data) {
       const existe = listaRegistros.some(item => item.dni === data.dni);
-      if (existe) {
-        alert("Este DNI ya se encuentra agregado en la lista.");
-        return;
-      }
+      if (existe) return;
 
       listaRegistros.push(data);
       renderTabla();
     }
 
-    // Renderiza la lista completa dentro de la tabla
     function renderTabla() {
       const tableBody = document.getElementById('tableBody');
       document.getElementById('totalRecords').textContent = listaRegistros.length;
 
       if (listaRegistros.length === 0) {
-        tableBody.innerHTML = `
-          <tr id="emptyRow">
-            <td colspan="9" class="empty-state">No hay registros guardados aún. Realiza una búsqueda.</td>
-          </tr>`;
+        tableBody.innerHTML = `<tr id="emptyRow"><td colspan="9" class="empty-state">No hay registros guardados aún.</td></tr>`;
         return;
       }
 
-      tableBody.innerHTML = listaRegistros.map(item => {
-        const dom = item.domiciliado || {};
-        return `
-          <tr>
-            <td><strong>${item.dni || ''}</strong></td>
-            <td>${item.nombres || ''}</td>
-            <td>${item.ape_paterno || ''}</td>
-            <td>${item.ape_materno || ''}</td>
-            <td>${dom.direccion || ''}</td>
-            <td>${dom.distrito || ''}</td>
-            <td>${dom.provincia || ''}</td>
-            <td>${dom.departamento || ''}</td>
-            <td><span class="badge">${dom.ubigeo || ''}</span></td>
-          </tr>
-        `;
-      }).join('');
+      tableBody.innerHTML = listaRegistros.map(item => `
+        <tr>
+          <td><strong>${item.dni}</strong></td>
+          <td>${item.nombres}</td>
+          <td>${item.ape_paterno}</td>
+          <td>${item.ape_materno}</td>
+          <td>${item.direccion}</td>
+          <td>${item.distrito}</td>
+          <td>${item.provincia}</td>
+          <td>${item.departamento}</td>
+          <td><span class="badge">${item.ubigeo}</span></td>
+        </tr>
+      `).join('');
     }
 
-    // Exporta la lista a formato Excel (.xlsx)
     document.getElementById('btnExport').addEventListener('click', () => {
       if (listaRegistros.length === 0) {
         alert("No hay registros guardados para exportar.");
@@ -480,17 +273,16 @@
         "Nombres": item.nombres,
         "Apellido Paterno": item.ape_paterno,
         "Apellido Materno": item.ape_materno,
-        "Dirección": item.domiciliado?.direccion || '',
-        "Distrito": item.domiciliado?.distrito || '',
-        "Provincia": item.domiciliado?.provincia || '',
-        "Departamento": item.domiciliado?.departamento || '',
-        "Ubigeo": item.domiciliado?.ubigeo || ''
+        "Dirección": item.direccion,
+        "Distrito": item.distrito,
+        "Provincia": item.provincia,
+        "Departamento": item.departamento,
+        "Ubigeo": item.ubigeo
       }));
 
       const worksheet = XLSX.utils.json_to_sheet(datosExcel);
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, "Lista_DNI");
-
       XLSX.writeFile(workbook, `Reporte_DNI_${new Date().toISOString().slice(0, 10)}.xlsx`);
     });
   </script>
