@@ -3,368 +3,497 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Consulta e Historial Rápido - RENIEC</title>
+  <title>Consulta y Registro DNI - RENIEC</title>
 
-  <!-- Bootstrap 5 CSS -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-  <!-- FontAwesome Icons -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
-  
+  <!-- SheetJS para exportar a Excel verdaderos (.xlsx) -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
   <style>
     :root {
-      --primary-color: #0d6efd;
-      --accent-color: #198754;
-      --bg-color: #f8f9fa;
+      --bg-color: #f2f9f4;
+      --card-bg: #ffffff;
+      --primary: #2e7d32;
+      --primary-light: #e8f5e9;
+      --accent: #4caf50;
+      --accent-hover: #388e3c;
+      --text-dark: #1b4332;
+      --text-muted: #667085;
+      --border-color: #c8e6c9;
+      --shadow: 0 4px 15px rgba(46, 125, 50, 0.08);
+      --radius: 12px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
     }
 
     body {
       background-color: var(--bg-color);
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      color: var(--text-dark);
+      padding: 1rem;
+      min-height: 100vh;
     }
 
-    .main-card {
-      border: none;
-      border-radius: 12px;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-      background: #ffffff;
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
     }
 
-    .btn-custom-primary {
-      background-color: var(--primary-color);
-      color: white;
+    header {
+      background: linear-gradient(135deg, #a5d6a7, #c8e6c9);
+      padding: 1.5rem;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      border: 1px solid var(--border-color);
+    }
+
+    header h1 {
+      font-size: 1.6rem;
+      color: var(--text-dark);
+    }
+
+    header p {
+      font-size: 0.9rem;
+      color: #2c5d31;
+    }
+
+    .card {
+      background: var(--card-bg);
+      padding: 1.5rem;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border-color);
+    }
+
+    .config-box {
+      margin-top: 0.5rem;
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .config-box input {
+      flex: 1;
+      min-width: 250px;
+      padding: 0.6rem 0.8rem;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      font-size: 0.85rem;
+    }
+
+    .search-grid {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 1rem;
+      align-items: center;
+    }
+
+    @media (max-width: 600px) {
+      .search-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    label {
+      font-size: 0.85rem;
       font-weight: 600;
-      transition: all 0.3s ease;
+      color: var(--primary);
     }
 
-    .btn-custom-primary:hover {
-      background-color: #0b5ed7;
-      transform: translateY(-1px);
+    input[type="text"] {
+      width: 100%;
+      padding: 0.8rem 1rem;
+      border: 2px solid var(--border-color);
+      border-radius: 8px;
+      font-size: 1rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input[type="text"]:focus {
+      border-color: var(--accent);
+    }
+
+    .btn {
+      background-color: var(--accent);
+      color: white;
+      border: none;
+      padding: 0.82rem 1.5rem;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      transition: background 0.2s, transform 0.1s;
+    }
+
+    .btn:hover {
+      background-color: var(--accent-hover);
+    }
+
+    .btn:active {
+      transform: scale(0.98);
     }
 
     .btn-excel {
-      background-color: var(--accent-color);
-      color: white;
-      font-weight: 600;
-      transition: all 0.3s ease;
+      background-color: #1e7e34;
     }
 
     .btn-excel:hover {
-      background-color: #157347;
-      color: white;
-      transform: translateY(-1px);
+      background-color: #145a23;
     }
 
-    .status-badge {
-      font-size: 0.85rem;
-      padding: 0.35em 0.65em;
+    /* Tarjeta de Resultado */
+    .result-card {
+      display: none;
+      background: var(--primary-light);
+      border-left: 5px solid var(--accent);
+      animation: fadeIn 0.3s ease-in-out;
     }
 
-    .table-responsive {
+    .result-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+
+    .data-item {
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+    }
+
+    .data-item span.label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+
+    .data-item span.value {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text-dark);
+    }
+
+    /* Tabla interactiva */
+    .table-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .table-container {
+      overflow-x: auto;
       border-radius: 8px;
-      overflow: hidden;
+      border: 1px solid var(--border-color);
     }
 
-    .input-group-lg > .form-control {
-      font-size: 1.2rem;
-      letter-spacing: 1px;
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 700px;
+      background: white;
+      font-size: 0.88rem;
+    }
+
+    th, td {
+      padding: 0.75rem 1rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    th {
+      background-color: var(--primary-light);
+      color: var(--primary);
+      font-weight: 700;
+    }
+
+    tbody tr:hover {
+      background-color: #f9fdf9;
+    }
+
+    .badge {
+      background: #e8f5e9;
+      color: var(--primary);
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 2rem;
+      color: var(--text-muted);
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-5px); }
+      to { opacity: 1; transform: translateY(0); }
     }
   </style>
 </head>
-<body class="py-4 py-md-5">
+<body>
 
   <div class="container">
+    
     <!-- Encabezado -->
-    <div class="row justify-content-center mb-4">
-      <div class="col-lg-8 text-center">
-        <h2 class="fw-bold text-dark mb-2">
-          <i class="fa-solid me-2 text-primary"></i>Consultas de DNI - RENIEC
-        </h2>
-        <p class="text-muted mb-0">Ingresa el número de DNI para consultar los datos, agregarlos a la lista y exportarlos a Excel.</p>
+    <header>
+      <h1>🔎 Consulta de DNI - RENIEC</h1>
+      <p>Busca información de identidad, almacénala localmente y expórtala a Excel.</p>
+      
+      <div class="config-box">
+        <label for="apiToken">Token API:</label>
+        <input type="text" id="apiToken" placeholder="86b63ed9-3477-4dde-a1d8-87c01013bf0d">
       </div>
-    </div>
+    </header>
 
-    <!-- Módulo de Búsqueda -->
-    <div class="row justify-content-center mb-4">
-      <div class="col-lg-8">
-        <div class="card main-card p-3 p-md-4">
-          <form id="searchForm" autocomplete="off">
-            <div class="label fw-semibold text-secondary mb-2">Número de Documento (DNI)</div>
-            <div class="input-group input-group-lg">
-              <span class="input-group-text bg-light text-muted border-end-0">
-                <i class="fa-solid fa-address-card"></i>
-              </span>
-              <input 
-                type="text" 
-                id="dniInput" 
-                class="form-control border-start-0" 
-                placeholder="Ejemplo: 12345678" 
-                maxlength="8" 
-                required 
-                pattern="[0-9]{8}"
-              >
-              <button class="btn btn-custom-primary px-4" type="submit" id="btnBuscar">
-                <i class="fa-solid fa-magnifying-glass me-2"></i>Buscar
-              </button>
-            </div>
-            <div class="form-text mt-2 text-muted">
-              Solo números de 8 dígitos.
-            </div>
-          </form>
+    <!-- Búsqueda -->
+    <section class="card">
+      <form id="searchForm" class="search-grid">
+        <div class="input-group">
+          <label for="dniInput">Número de DNI</label>
+          <input type="text" id="dniInput" maxlength="8" placeholder="Ej. 44078625" pattern="\d{8}" required>
+        </div>
+        <button type="submit" class="btn" id="btnBuscar">
+          🔍 Buscar DNI
+        </button>
+      </form>
+    </section>
 
-          <!-- Spinner & Alertas -->
-          <div id="spinner" class="text-center my-3 d-none">
-            <div class="spinner-border text-primary" role="status">
-              <span class="visually-hidden">Consultando...</span>
-            </div>
-            <p class="text-muted small mt-2">Consultando a RENIEC...</p>
-          </div>
+    <!-- Vista Previa del Resultado -->
+    <section class="card result-card" id="resultCard">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h3>Resultado de la Búsqueda</h3>
+        <span class="badge" id="resDniBadge">DNI: -</span>
+      </div>
 
-          <div id="alertContainer" class="mt-3"></div>
+      <div class="result-grid">
+        <div class="data-item">
+          <span class="label">Nombres</span>
+          <span class="value" id="resNombres">-</span>
+        </div>
+        <div class="data-item">
+          <span class="label">Apellido Paterno</span>
+          <span class="value" id="resApePaterno">-</span>
+        </div>
+        <div class="data-item">
+          <span class="label">Apellido Materno</span>
+          <span class="value" id="resApeMaterno">-</span>
+        </div>
+        <div class="data-item">
+          <span class="label">Dirección</span>
+          <span class="value" id="resDireccion">-</span>
+        </div>
+        <div class="data-item">
+          <span class="label">Ubicación (Dpto / Prov / Dist)</span>
+          <span class="value" id="resUbicacion">-</span>
+        </div>
+        <div class="data-item">
+          <span class="label">Ubigeo</span>
+          <span class="value" id="resUbigeo">-</span>
         </div>
       </div>
-    </div>
+    </section>
 
-    <!-- Módulo de Resultados / Tabla -->
-    <div class="row justify-content-center">
-      <div class="col-lg-10">
-        <div class="card main-card p-3 p-md-4">
-          <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center mb-3 gap-2">
-            <div>
-              <h5 class="fw-bold mb-0">Lista de Personas Registradas</h5>
-              <small class="text-muted" id="totalRecords">0 registros agregados</small>
-            </div>
-            <div class="d-flex gap-2">
-              <button id="btnExport" class="btn btn-excel btn-sm px-3" disabled>
-                <i class="fa-solid fa-file-excel me-2"></i>Exportar a Excel
-              </button>
-              <button id="btnClear" class="btn btn-outline-danger btn-sm px-3" disabled>
-                <i class="fa-solid fa-trash me-2"></i>Limpiar Todo
-              </button>
-            </div>
-          </div>
-
-          <!-- Tabla -->
-          <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0" id="resultsTable">
-              <thead class="table-dark">
-                <tr>
-                  <th scope="col" class="text-center">#</th>
-                  <th scope="col">DNI</th>
-                  <th scope="col">Nombres</th>
-                  <th scope="col">Apellido Paterno</th>
-                  <th scope="col">Apellido Materno</th>
-                  <th scope="col" class="text-center">Acciones</th>
-                </tr>
-              </thead>
-              <tbody id="tableBody">
-                <tr id="emptyRow">
-                  <td colspan="6" class="text-center py-4 text-muted">
-                    <i class="fa-solid fa-folder-open display-6 mb-2 d-block"></i>
-                    Aún no se han consultado registros.
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-        </div>
+    <!-- Tabla de Registros Guardados -->
+    <section class="card">
+      <div class="table-header">
+        <h3>📋 Registros Acumulados (<span id="totalRecords">0</span>)</h3>
+        <button class="btn btn-excel" id="btnExport">
+          📊 Exportar a Excel
+        </button>
       </div>
-    </div>
+
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>DNI</th>
+              <th>Nombres</th>
+              <th>A. Paterno</th>
+              <th>A. Materno</th>
+              <th>Dirección</th>
+              <th>Distrito</th>
+              <th>Provincia</th>
+              <th>Departamento</th>
+              <th>Ubigeo</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody">
+            <tr id="emptyRow">
+              <td colspan="9" class="empty-state">No hay registros guardados aún. Realiza una búsqueda.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
   </div>
 
-  <!-- SheetJS para exportar a Excel -->
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-
-  <!-- Lógica JavaScript -->
   <script>
-    // Configuración general
-    const API_TOKEN = '86b63ed9-3477-4dde-a1d8-87c01013bf0d';
-    const API_URL = 'https://miapi.cloud/v1/dni/';
+    // Arreglo local para mantener los registros
+    let listaRegistros = [];
 
-    // Elementos del DOM
     const searchForm = document.getElementById('searchForm');
     const dniInput = document.getElementById('dniInput');
+    const apiTokenInput = document.getElementById('apiToken');
     const btnBuscar = document.getElementById('btnBuscar');
-    const spinner = document.getElementById('spinner');
-    const alertContainer = document.getElementById('alertContainer');
-    const tableBody = document.getElementById('tableBody');
-    const emptyRow = document.getElementById('emptyRow');
-    const btnExport = document.getElementById('btnExport');
-    const btnClear = document.getElementById('btnClear');
-    const totalRecords = document.getElementById('totalRecords');
+    const resultCard = document.getElementById('resultCard');
 
-    // Estado local
-    let recordsList = [];
-
-    // Validar solo números en el input
-    dniInput.addEventListener('input', (e) => {
-      e.target.value = e.target.value.replace(/[^0-9]/g, '');
-    });
-
-    // Evento Submit de búsqueda
+    // Manejador del evento Submit
     searchForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       const dni = dniInput.value.trim();
+      const token = apiTokenInput.value.trim();
 
       if (dni.length !== 8) {
-        showAlert('El DNI debe contener exactamente 8 dígitos.', 'warning');
+        alert("El DNI debe tener 8 dígitos.");
         return;
       }
 
-      // Validar si ya existe en la lista
-      if (recordsList.some(item => item.dni === dni)) {
-        showAlert(`El DNI ${dni} ya se encuentra cargado en la lista.`, 'info');
-        dniInput.value = '';
-        return;
-      }
-
-      clearAlerts();
-      setLoading(true);
+      btnBuscar.disabled = true;
+      btnBuscar.textContent = "Buscando...";
 
       try {
-        const response = await fetch(`${API_URL}${dni}?token=${API_TOKEN}`);
+        // Petición a la API usando el token ingresado
+        const response = await fetch(`https://miapi.cloud/v1/dni/${dni}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
 
         if (!response.ok) {
-          throw new Error('Error al conectar con la API o DNI no encontrado.');
+          throw new Error(`Error en la consulta (${response.status})`);
         }
 
         const data = await response.json();
+        
+        // Mostrar resultado en pantalla y guardar en lista
+        mostrarResultado(data);
+        guardarEnLista(data);
 
-        if (data.success === false || (!data.nombres && !data.nombre)) {
-          showAlert('No se encontraron registros para el DNI ingresado.', 'danger');
-        } else {
-          // Normalizar estructura de la respuesta
-          const person = {
-            dni: data.dni || dni,
-            nombres: data.nombres || '',
-            apellidoPaterno: data.apellidoPaterno || '',
-            apellidoMaterno: data.apellidoMaterno || ''
-          };
-
-          addRecordToList(person);
-          showAlert('DNI encontrado y agregado con éxito.', 'success');
-          dniInput.value = '';
-        }
       } catch (error) {
-        showAlert(error.message || 'Ocurrió un error al procesar la consulta.', 'danger');
+        alert("Ocurrió un problema al consultar la API: " + error.message);
       } finally {
-        setLoading(false);
+        btnBuscar.disabled = false;
+        btnBuscar.innerHTML = "🔍 Buscar DNI";
       }
     });
 
-    // Agregar elemento al estado e interfaz
-    function addRecordToList(person) {
-      recordsList.push(person);
-      renderTable();
+    // Mostrar en la tarjeta superior
+    function mostrarResultado(data) {
+      document.getElementById('resDniBadge').textContent = `DNI: ${data.dni || '-'}`;
+      document.getElementById('resNombres').textContent = data.nombres || '-';
+      document.getElementById('resApePaterno').textContent = data.ape_paterno || '-';
+      document.getElementById('resApeMaterno').textContent = data.ape_materno || '-';
+      
+      const dom = data.domiciliado || {};
+      document.getElementById('resDireccion').textContent = dom.direccion || '-';
+      document.getElementById('resUbicacion').textContent = `${dom.departamento || ''} / ${dom.provincia || ''} / ${dom.distrito || ''}`;
+      document.getElementById('resUbigeo').textContent = dom.ubigeo || '-';
+
+      resultCard.style.display = 'block';
     }
 
-    // Renderizar la tabla con la lista acumulada
-    function renderTable() {
-      tableBody.innerHTML = '';
-
-      if (recordsList.length === 0) {
-        tableBody.appendChild(emptyRow);
-        btnExport.disabled = true;
-        btnClear.disabled = true;
-        totalRecords.textContent = '0 registros agregados';
+    // Guardar en la tabla e historial
+    function guardarEnLista(data) {
+      // Evitar duplicados por DNI
+      const existe = listaRegistros.some(item => item.dni === data.dni);
+      if (existe) {
+        alert("Este DNI ya fue agregado previamente a la lista.");
         return;
       }
 
-      btnExport.disabled = false;
-      btnClear.disabled = false;
-      totalRecords.textContent = `${recordsList.length} registro(s) cargado(s)`;
-
-      recordsList.forEach((item, index) => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td class="text-center fw-bold text-secondary">${index + 1}</td>
-          <td><span class="badge bg-light text-dark border fw-normal">${item.dni}</span></td>
-          <td class="fw-semibold">${item.nombres}</td>
-          <td>${item.apellidoPaterno}</td>
-          <td>${item.apellidoMaterno}</td>
-          <td class="text-center">
-            <button class="btn btn-outline-danger btn-sm border-0" onclick="deleteRecord('${item.dni}')" title="Eliminar">
-              <i class="fa-solid fa-trash-can"></i>
-            </button>
-          </td>
-        `;
-        tableBody.appendChild(tr);
-      });
+      listaRegistros.push(data);
+      renderTabla();
     }
 
-    // Eliminar registro individual
-    window.deleteRecord = function(dni) {
-      recordsList = recordsList.filter(item => item.dni !== dni);
-      renderTable();
-    };
+    // Renderizar la tabla HTML
+    function renderTabla() {
+      const tableBody = document.getElementById('tableBody');
+      document.getElementById('totalRecords').textContent = listaRegistros.length;
 
-    // Limpiar toda la tabla
-    btnClear.addEventListener('click', () => {
-      if (confirm('¿Deseas eliminar todos los registros agregados?')) {
-        recordsList = [];
-        renderTable();
-        clearAlerts();
+      if (listaRegistros.length === 0) {
+        tableBody.innerHTML = `
+          <tr id="emptyRow">
+            <td colspan="9" class="empty-state">No hay registros guardados aún. Realiza una búsqueda.</td>
+          </tr>`;
+        return;
       }
-    });
 
-    // Exportar datos a Excel mediante SheetJS
-    btnExport.addEventListener('click', () => {
-      if (recordsList.length === 0) return;
+      tableBody.innerHTML = listaRegistros.map(item => {
+        const dom = item.domiciliado || {};
+        return `
+          <tr>
+            <td><strong>${item.dni || ''}</strong></td>
+            <td>${item.nombres || ''}</td>
+            <td>${item.ape_paterno || ''}</td>
+            <td>${item.ape_materno || ''}</td>
+            <td>${dom.direccion || ''}</td>
+            <td>${dom.distrito || ''}</td>
+            <td>${dom.provincia || ''}</td>
+            <td>${dom.departamento || ''}</td>
+            <td><span class="badge">${dom.ubigeo || ''}</span></td>
+          </tr>
+        `;
+      }).join('');
+    }
 
-      // Mapeo limpio para cabeceras claras en Excel
-      const excelData = recordsList.map((item, idx) => ({
-        'Item': idx + 1,
-        'DNI': item.dni,
-        'Nombres': item.nombres,
-        'Apellido Paterno': item.apellidoPaterno,
-        'Apellido Materno': item.apellidoMaterno,
-        'Nombre Completo': `${item.nombres} ${item.apellidoPaterno} ${item.apellidoMaterno}`.trim()
+    // Exportar lista a Excel (.xlsx) usando SheetJS
+    document.getElementById('btnExport').addEventListener('click', () => {
+      if (listaRegistros.length === 0) {
+        alert("No hay registros en la lista para exportar.");
+        return;
+      }
+
+      // Mapear los datos a una estructura plana ideal para Excel
+      const datosExcel = listaRegistros.map(item => ({
+        "DNI": item.dni,
+        "Nombres": item.nombres,
+        "Apellido Paterno": item.ape_paterno,
+        "Apellido Materno": item.ape_materno,
+        "Dirección": item.domiciliado?.direccion || '',
+        "Distrito": item.domiciliado?.distrito || '',
+        "Provincia": item.domiciliado?.provincia || '',
+        "Departamento": item.domiciliado?.departamento || '',
+        "Ubigeo": item.domiciliado?.ubigeo || ''
       }));
 
-      const worksheet = XLSX.utils.json_to_sheet(excelData);
-      
-      // Ajuste básico de ancho de columnas
-      worksheet['!cols'] = [
-        { wch: 6 },
-        { wch: 12 },
-        { wch: 25 },
-        { wch: 20 },
-        { wch: 20 },
-        { wch: 45 }
-      ];
-
+      // Generar libro y hoja de trabajo
+      const worksheet = XLSX.utils.json_to_sheet(datosExcel);
       const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, 'Consultas_RENIEC');
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Lista_DNI");
 
-      // Nombre del archivo con marca de fecha
-      const timestamp = new Date().toISOString().slice(0, 10);
-      XLSX.writeFile(workbook, `Consultas_RENIEC_${timestamp}.xlsx`);
+      // Descargar archivo .xlsx
+      XLSX.writeFile(workbook, `Reporte_DNI_${new Date().toISOString().slice(0,10)}.xlsx`);
     });
-
-    // Helpers UI
-    function setLoading(isLoading) {
-      if (isLoading) {
-        spinner.classList.remove('d-none');
-        btnBuscar.disabled = true;
-      } else {
-        spinner.classList.add('d-none');
-        btnBuscar.disabled = false;
-      }
-    }
-
-    function showAlert(message, type) {
-      alertContainer.innerHTML = `
-        <div class="alert alert-${type} alert-dismissible fade show mb-0" role="alert">
-          <i class="fa-solid ${type === 'danger' ? 'fa-triangle-exclamation' : 'fa-circle-check'} me-2"></i>
-          ${message}
-          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
-      `;
-    }
-
-    function clearAlerts() {
-      alertContainer.innerHTML = '';
-    }
   </script>
 </body>
 </html>
