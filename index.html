@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Consulta y Registro DNI - RENIEC</title>
 
-  <!-- SheetJS para exportar a Excel verdaderos (.xlsx) -->
+  <!-- SheetJS para exportar a Excel (.xlsx) -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
   <style>
@@ -95,7 +95,7 @@
       display: grid;
       grid-template-columns: 1fr auto;
       gap: 1rem;
-      align-items: center;
+      align-items: flex-end;
     }
 
     @media (max-width: 600px) {
@@ -268,7 +268,7 @@
       
       <div class="config-box">
         <label for="apiToken">Token API:</label>
-        <input type="text" id="apiToken" placeholder="86b63ed9-3477-4dde-a1d8-87c01013bf0d">
+        <input type="text" id="apiToken" placeholder="Ingresa tu token de autorización aquí">
       </div>
     </header>
 
@@ -356,23 +356,42 @@
   </div>
 
   <script>
-    // Arreglo local para mantener los registros
+    // Arreglo local para mantener los registros acumulados
     let listaRegistros = [];
 
+    // Función principal para la petición API
+    const consultarDNI = async (dni, token) => {
+      const response = await fetch(`https://miapi.cloud/v1/dni/${dni}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Error en la consulta (Código HTTP: ${response.status})`);
+      }
+
+      const data = await response.json();
+      return data;
+    };
+
+    // Referencias al DOM
     const searchForm = document.getElementById('searchForm');
     const dniInput = document.getElementById('dniInput');
     const apiTokenInput = document.getElementById('apiToken');
     const btnBuscar = document.getElementById('btnBuscar');
     const resultCard = document.getElementById('resultCard');
 
-    // Manejador del evento Submit
+    // Manejador del evento de consulta
     searchForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       const dni = dniInput.value.trim();
       const token = apiTokenInput.value.trim();
 
       if (dni.length !== 8) {
-        alert("El DNI debe tener 8 dígitos.");
+        alert("El DNI debe tener exactamente 8 dígitos.");
         return;
       }
 
@@ -380,34 +399,18 @@
       btnBuscar.textContent = "Buscando...";
 
       try {
-        // Petición a la API usando el token ingresado
-        const response = await fetch(`https://miapi.cloud/v1/dni/${dni}`, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
-
-        if (!response.ok) {
-          throw new Error(`Error en la consulta (${response.status})`);
-        }
-
-        const data = await response.json();
-        
-        // Mostrar resultado en pantalla y guardar en lista
+        const data = await consultarDNI(dni, token);
         mostrarResultado(data);
         guardarEnLista(data);
-
       } catch (error) {
-        alert("Ocurrió un problema al consultar la API: " + error.message);
+        alert("Ocurrió un error al consultar: " + error.message);
       } finally {
         btnBuscar.disabled = false;
         btnBuscar.innerHTML = "🔍 Buscar DNI";
       }
     });
 
-    // Mostrar en la tarjeta superior
+    // Muestra el resultado individual en la tarjeta desplegable
     function mostrarResultado(data) {
       document.getElementById('resDniBadge').textContent = `DNI: ${data.dni || '-'}`;
       document.getElementById('resNombres').textContent = data.nombres || '-';
@@ -422,12 +425,11 @@
       resultCard.style.display = 'block';
     }
 
-    // Guardar en la tabla e historial
+    // Guarda el registro en la lista y actualiza la tabla
     function guardarEnLista(data) {
-      // Evitar duplicados por DNI
       const existe = listaRegistros.some(item => item.dni === data.dni);
       if (existe) {
-        alert("Este DNI ya fue agregado previamente a la lista.");
+        alert("Este DNI ya se encuentra agregado en la lista.");
         return;
       }
 
@@ -435,7 +437,7 @@
       renderTabla();
     }
 
-    // Renderizar la tabla HTML
+    // Renderiza la lista completa dentro de la tabla
     function renderTabla() {
       const tableBody = document.getElementById('tableBody');
       document.getElementById('totalRecords').textContent = listaRegistros.length;
@@ -466,14 +468,13 @@
       }).join('');
     }
 
-    // Exportar lista a Excel (.xlsx) usando SheetJS
+    // Exporta la lista a formato Excel (.xlsx)
     document.getElementById('btnExport').addEventListener('click', () => {
       if (listaRegistros.length === 0) {
-        alert("No hay registros en la lista para exportar.");
+        alert("No hay registros guardados para exportar.");
         return;
       }
 
-      // Mapear los datos a una estructura plana ideal para Excel
       const datosExcel = listaRegistros.map(item => ({
         "DNI": item.dni,
         "Nombres": item.nombres,
@@ -486,13 +487,11 @@
         "Ubigeo": item.domiciliado?.ubigeo || ''
       }));
 
-      // Generar libro y hoja de trabajo
       const worksheet = XLSX.utils.json_to_sheet(datosExcel);
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, "Lista_DNI");
 
-      // Descargar archivo .xlsx
-      XLSX.writeFile(workbook, `Reporte_DNI_${new Date().toISOString().slice(0,10)}.xlsx`);
+      XLSX.writeFile(workbook, `Reporte_DNI_${new Date().toISOString().slice(0, 10)}.xlsx`);
     });
   </script>
 </body>
