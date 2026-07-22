@@ -3,322 +3,367 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Buscador DNI RENIEC - Exportador a Excel</title>
-  <!-- Tailwind CSS para diseño moderno -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Librería SheetJS para exportar a Excel -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <title>Consulta e Historial Rápido - RENIEC</title>
+
+  <!-- Bootstrap 5 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+  
+  <style>
+    :root {
+      --primary-color: #0d6efd;
+      --accent-color: #198754;
+      --bg-color: #f8f9fa;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    .main-card {
+      border: none;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+      background: #ffffff;
+    }
+
+    .btn-custom-primary {
+      background-color: var(--primary-color);
+      color: white;
+      font-weight: 600;
+      transition: all 0.3s ease;
+    }
+
+    .btn-custom-primary:hover {
+      background-color: #0b5ed7;
+      transform: translateY(-1px);
+    }
+
+    .btn-excel {
+      background-color: var(--accent-color);
+      color: white;
+      font-weight: 600;
+      transition: all 0.3s ease;
+    }
+
+    .btn-excel:hover {
+      background-color: #157347;
+      color: white;
+      transform: translateY(-1px);
+    }
+
+    .status-badge {
+      font-size: 0.85rem;
+      padding: 0.35em 0.65em;
+    }
+
+    .table-responsive {
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .input-group-lg > .form-control {
+      font-size: 1.2rem;
+      letter-spacing: 1px;
+    }
+  </style>
 </head>
-<body class="bg-slate-100 text-slate-800 font-sans min-h-screen p-4 md:p-8">
+<body class="py-4 py-md-5">
 
-  <div class="max-w-4xl mx-auto space-y-6">
-    
+  <div class="container">
     <!-- Encabezado -->
-    <header class="bg-blue-700 text-white p-6 rounded-xl shadow-md">
-      <h1 class="text-2xl md:text-3xl font-bold">Consulta DNI - RENIEC</h1>
-      <p class="text-blue-100 text-sm mt-1">Busca ciudadanos por DNI, consulta sus nombres en tiempo real y exporta la lista a Excel.</p>
-    </header>
+    <div class="row justify-content-center mb-4">
+      <div class="col-lg-8 text-center">
+        <h2 class="fw-bold text-dark mb-2">
+          <i class="fa-solid me-2 text-primary"></i>Consultas de DNI - RENIEC
+        </h2>
+        <p class="text-muted mb-0">Ingresa el número de DNI para consultar los datos, agregarlos a la lista y exportarlos a Excel.</p>
+      </div>
+    </div>
 
-    <!-- Formulario de Consulta DNI -->
-    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-      <h2 class="text-lg font-semibold mb-4 text-slate-800 border-b border-slate-100 pb-2">1. Consultar Persona</h2>
-      
-      <form id="dniForm" class="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div>
-          <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">DNI (8 dígitos)</label>
-          <div class="flex gap-2">
-            <input type="text" id="dniInput" maxlength="8" placeholder="Ej. 12345678" required 
-              class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-mono"
-              pattern="[0-9]{8}" title="Ingresa 8 números">
-            
-            <button type="button" id="btnBuscarDni" class="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-2 shrink-0">
-              <span id="btnText">Buscar</span>
-              <div id="loader" class="hidden w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-            </button>
+    <!-- Módulo de Búsqueda -->
+    <div class="row justify-content-center mb-4">
+      <div class="col-lg-8">
+        <div class="card main-card p-3 p-md-4">
+          <form id="searchForm" autocomplete="off">
+            <div class="label fw-semibold text-secondary mb-2">Número de Documento (DNI)</div>
+            <div class="input-group input-group-lg">
+              <span class="input-group-text bg-light text-muted border-end-0">
+                <i class="fa-solid fa-address-card"></i>
+              </span>
+              <input 
+                type="text" 
+                id="dniInput" 
+                class="form-control border-start-0" 
+                placeholder="Ejemplo: 12345678" 
+                maxlength="8" 
+                required 
+                pattern="[0-9]{8}"
+              >
+              <button class="btn btn-custom-primary px-4" type="submit" id="btnBuscar">
+                <i class="fa-solid fa-magnifying-glass me-2"></i>Buscar
+              </button>
+            </div>
+            <div class="form-text mt-2 text-muted">
+              Solo números de 8 dígitos.
+            </div>
+          </form>
+
+          <!-- Spinner & Alertas -->
+          <div id="spinner" class="text-center my-3 d-none">
+            <div class="spinner-border text-primary" role="status">
+              <span class="visually-hidden">Consultando...</span>
+            </div>
+            <p class="text-muted small mt-2">Consultando a RENIEC...</p>
           </div>
-        </div>
 
-        <div>
-          <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">Nombres</label>
-          <input type="text" id="nombreInput" placeholder="Nombres" required readonly
-            class="w-full px-3 py-2 border border-slate-200 bg-slate-50 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
-        </div>
-
-        <div>
-          <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">Apellidos</label>
-          <input type="text" id="apellidoInput" placeholder="Apellidos" required readonly
-            class="w-full px-3 py-2 border border-slate-200 bg-slate-50 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
-        </div>
-
-        <div class="flex items-end">
-          <button type="submit" id="btnAgregar" disabled class="w-full bg-blue-600 disabled:bg-slate-300 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition text-sm flex items-center justify-center gap-2">
-            + Agregar a Lista
-          </button>
-        </div>
-      </form>
-
-      <!-- Mensajes de Estado / Alertas -->
-      <div id="statusAlert" class="mt-3 p-3 rounded-lg text-xs font-medium hidden"></div>
-    </div>
-
-    <!-- Lista y Filtros -->
-    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-4">
-      
-      <div class="flex flex-col md:flex-row justify-between items-center gap-3">
-        <div>
-          <h2 class="text-lg font-semibold text-slate-800">2. Registros Guardados</h2>
-          <p class="text-xs text-slate-500" id="totalCount">Total: 0 personas</p>
-        </div>
-
-        <div class="flex items-center gap-2 w-full md:w-auto">
-          <input type="text" id="searchFilter" placeholder="Filtrar por DNI o Nombre..." 
-            class="w-full md:w-64 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
-          
-          <button id="exportBtn" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2 px-4 rounded-lg transition text-sm flex items-center gap-2 shrink-0">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-            Exportar Excel
-          </button>
+          <div id="alertContainer" class="mt-3"></div>
         </div>
       </div>
-
-      <!-- Tabla de Datos -->
-      <div class="overflow-x-auto border border-slate-200 rounded-lg">
-        <table class="w-full text-left text-sm text-slate-600">
-          <thead class="bg-slate-50 text-slate-700 border-b border-slate-200">
-            <tr>
-              <th class="p-3 font-bold">#</th>
-              <th class="p-3 font-bold">DNI</th>
-              <th class="p-3 font-bold">Nombres</th>
-              <th class="p-3 font-bold">Apellidos</th>
-              <th class="p-3 font-bold">Fecha Consulta</th>
-              <th class="p-3 font-bold text-center">Acciones</th>
-            </tr>
-          </thead>
-          <tbody id="tablaResultados" class="divide-y divide-slate-100">
-            <!-- Filas dinámicas -->
-          </tbody>
-        </table>
-      </div>
-
     </div>
 
+    <!-- Módulo de Resultados / Tabla -->
+    <div class="row justify-content-center">
+      <div class="col-lg-10">
+        <div class="card main-card p-3 p-md-4">
+          <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center mb-3 gap-2">
+            <div>
+              <h5 class="fw-bold mb-0">Lista de Personas Registradas</h5>
+              <small class="text-muted" id="totalRecords">0 registros agregados</small>
+            </div>
+            <div class="d-flex gap-2">
+              <button id="btnExport" class="btn btn-excel btn-sm px-3" disabled>
+                <i class="fa-solid fa-file-excel me-2"></i>Exportar a Excel
+              </button>
+              <button id="btnClear" class="btn btn-outline-danger btn-sm px-3" disabled>
+                <i class="fa-solid fa-trash me-2"></i>Limpiar Todo
+              </button>
+            </div>
+          </div>
+
+          <!-- Tabla -->
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" id="resultsTable">
+              <thead class="table-dark">
+                <tr>
+                  <th scope="col" class="text-center">#</th>
+                  <th scope="col">DNI</th>
+                  <th scope="col">Nombres</th>
+                  <th scope="col">Apellido Paterno</th>
+                  <th scope="col">Apellido Materno</th>
+                  <th scope="col" class="text-center">Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="tableBody">
+                <tr id="emptyRow">
+                  <td colspan="6" class="text-center py-4 text-muted">
+                    <i class="fa-solid fa-folder-open display-6 mb-2 d-block"></i>
+                    Aún no se han consultado registros.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+        </div>
+      </div>
+    </div>
   </div>
 
+  <!-- SheetJS para exportar a Excel -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <!-- Lógica JavaScript -->
   <script>
-    let baseDatos = [];
+    // Configuración general
+    const API_TOKEN = '86b63ed9-3477-4dde-a1d8-87c01013bf0d';
+    const API_URL = 'https://dniruc.apisperu.com/api/v1/dni/';
 
-    // Referencias DOM
+    // Elementos del DOM
+    const searchForm = document.getElementById('searchForm');
     const dniInput = document.getElementById('dniInput');
-    const nombreInput = document.getElementById('nombreInput');
-    const apellidoInput = document.getElementById('apellidoInput');
-    const btnBuscarDni = document.getElementById('btnBuscarDni');
-    const btnAgregar = document.getElementById('btnAgregar');
-    const statusAlert = document.getElementById('statusAlert');
-    const btnText = document.getElementById('btnText');
-    const loader = document.getElementById('loader');
+    const btnBuscar = document.getElementById('btnBuscar');
+    const spinner = document.getElementById('spinner');
+    const alertContainer = document.getElementById('alertContainer');
+    const tableBody = document.getElementById('tableBody');
+    const emptyRow = document.getElementById('emptyRow');
+    const btnExport = document.getElementById('btnExport');
+    const btnClear = document.getElementById('btnClear');
+    const totalRecords = document.getElementById('totalRecords');
 
-    const dniForm = document.getElementById('dniForm');
-    const tablaResultados = document.getElementById('tablaResultados');
-    const searchFilter = document.getElementById('searchFilter');
-    const exportBtn = document.getElementById('exportBtn');
-    const totalCount = document.getElementById('totalCount');
+    // Estado local
+    let recordsList = [];
 
-    // API ENDPOINT CONSULTA DNI
-    const API_URL = '86b63ed9-3477-4dde-a1d8-87c01013bf0d';
+    // Validar solo números en el input
+    dniInput.addEventListener('input', (e) => {
+      e.target.value = e.target.value.replace(/[^0-9]/g, '');
+    });
 
-    // 1. Función para consultar el DNI a la API de RENIEC
-    async function consultarDNI() {
+    // Evento Submit de búsqueda
+    searchForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
       const dni = dniInput.value.trim();
-      
-      if (dni.length !== 8 || isNaN(dni)) {
-        mostrarAlerta("Ingresa un número de DNI válido de 8 dígitos.", "error");
+
+      if (dni.length !== 8) {
+        showAlert('El DNI debe contener exactamente 8 dígitos.', 'warning');
         return;
       }
 
-      limpiarAlerta();
-      toggleLoading(true);
+      // Validar si ya existe en la lista
+      if (recordsList.some(item => item.dni === dni)) {
+        showAlert(`El DNI ${dni} ya se encuentra cargado en la lista.`, 'info');
+        dniInput.value = '';
+        return;
+      }
+
+      clearAlerts();
+      setLoading(true);
 
       try {
-        const response = await fetch(`${API_URL}${dni}`);
+        const response = await fetch(`${API_URL}${dni}?token=${API_TOKEN}`);
 
         if (!response.ok) {
-          throw new Error("No se encontraron registros o el servicio superó la cuota gratuita.");
+          throw new Error('Error al conectar con la API o DNI no encontrado.');
         }
 
         const data = await response.json();
 
-        if (data.nombres) {
-          nombreInput.value = data.nombres;
-          apellidoInput.value = `${data.apellidoPaterno || ''} ${data.apellidoMaterno || ''}`.trim();
-          
-          nombreInput.readOnly = true;
-          apellidoInput.readOnly = true;
-          btnAgregar.disabled = false;
-
-          mostrarAlerta("¡DNI encontrado con éxito en RENIEC!", "exito");
+        if (data.success === false || (!data.nombres && !data.nombre)) {
+          showAlert('No se encontraron registros para el DNI ingresado.', 'danger');
         } else {
-          throw new Error("Respuesta de la API incompleta.");
-        }
+          // Normalizar estructura de la respuesta
+          const person = {
+            dni: data.dni || dni,
+            nombres: data.nombres || '',
+            apellidoPaterno: data.apellidoPaterno || '',
+            apellidoMaterno: data.apellidoMaterno || ''
+          };
 
+          addRecordToList(person);
+          showAlert('DNI encontrado y agregado con éxito.', 'success');
+          dniInput.value = '';
+        }
       } catch (error) {
-        console.warn("Fallo en la API:", error);
-        mostrarAlerta("No se pudo consultar automáticamente. Se habilitaron los campos para llenado manual.", "advertencia");
-        
-        // Desbloquea los campos si la API falla o no encuentra datos
-        nombreInput.readOnly = false;
-        apellidoInput.readOnly = false;
-        nombreInput.focus();
-        btnAgregar.disabled = false;
+        showAlert(error.message || 'Ocurrió un error al procesar la consulta.', 'danger');
       } finally {
-        toggleLoading(false);
+        setLoading(false);
       }
+    });
+
+    // Agregar elemento al estado e interfaz
+    function addRecordToList(person) {
+      recordsList.push(person);
+      renderTable();
     }
 
-    // Listener del botón de búsqueda y tecla Enter
-    btnBuscarDni.addEventListener('click', consultarDNI);
-    dniInput.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        consultarDNI();
-      }
-    });
+    // Renderizar la tabla con la lista acumulada
+    function renderTable() {
+      tableBody.innerHTML = '';
 
-    // 2. Guardar registro en la tabla
-    dniForm.addEventListener('submit', (e) => {
-      e.preventDefault();
-
-      const dni = dniInput.value.trim();
-      const nombres = nombreInput.value.trim();
-      const apellidos = apellidoInput.value.trim();
-
-      if (baseDatos.some(p => p.dni === dni)) {
-        mostrarAlerta("Este DNI ya se encuentra en la lista.", "error");
+      if (recordsList.length === 0) {
+        tableBody.appendChild(emptyRow);
+        btnExport.disabled = true;
+        btnClear.disabled = true;
+        totalRecords.textContent = '0 registros agregados';
         return;
       }
 
-      baseDatos.push({
-        dni,
-        nombres,
-        apellidos,
-        fecha: new Date().toLocaleDateString('es-PE') + " " + new Date().toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })
-      });
+      btnExport.disabled = false;
+      btnClear.disabled = false;
+      totalRecords.textContent = `${recordsList.length} registro(s) cargado(s)`;
 
-      renderTabla(baseDatos);
-
-      // Limpiar formulario
-      dniForm.reset();
-      nombreInput.readOnly = true;
-      apellidoInput.readOnly = true;
-      btnAgregar.disabled = true;
-      limpiarAlerta();
-    });
-
-    // Renderizar la tabla de resultados
-    function renderTabla(datos) {
-      tablaResultados.innerHTML = '';
-      totalCount.textContent = `Total: ${datos.length} personas`;
-
-      if (datos.length === 0) {
-        tablaResultados.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-400">No hay registros agregados aún.</td></tr>`;
-        return;
-      }
-
-      datos.forEach((item, index) => {
-        const row = document.createElement('tr');
-        row.className = "hover:bg-slate-50 transition border-b border-slate-100";
-        row.innerHTML = `
-          <td class="p-3 font-mono text-xs text-slate-400">${index + 1}</td>
-          <td class="p-3 font-mono font-semibold text-slate-800">${item.dni}</td>
-          <td class="p-3 font-medium text-slate-800">${item.nombres}</td>
-          <td class="p-3 font-medium text-slate-800">${item.apellidos}</td>
-          <td class="p-3 text-xs text-slate-500">${item.fecha}</td>
-          <td class="p-3 text-center">
-            <button onclick="eliminarRegistro('${item.dni}')" class="text-red-500 hover:text-red-700 font-semibold text-xs transition">Eliminar</button>
+      recordsList.forEach((item, index) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="text-center fw-bold text-secondary">${index + 1}</td>
+          <td><span class="badge bg-light text-dark border fw-normal">${item.dni}</span></td>
+          <td class="fw-semibold">${item.nombres}</td>
+          <td>${item.apellidoPaterno}</td>
+          <td>${item.apellidoMaterno}</td>
+          <td class="text-center">
+            <button class="btn btn-outline-danger btn-sm border-0" onclick="deleteRecord('${item.dni}')" title="Eliminar">
+              <i class="fa-solid fa-trash-can"></i>
+            </button>
           </td>
         `;
-        tablaResultados.appendChild(row);
+        tableBody.appendChild(tr);
       });
     }
 
-    function eliminarRegistro(dni) {
-      baseDatos = baseDatos.filter(p => p.dni !== dni);
-      renderTabla(obtenerDatosFiltrados());
-    }
+    // Eliminar registro individual
+    window.deleteRecord = function(dni) {
+      recordsList = recordsList.filter(item => item.dni !== dni);
+      renderTable();
+    };
 
-    // Filtrar tabla en vivo
-    searchFilter.addEventListener('input', () => renderTabla(obtenerDatosFiltrados()));
-
-    function obtenerDatosFiltrados() {
-      const query = searchFilter.value.toLowerCase().trim();
-      return baseDatos.filter(p => 
-        p.dni.toLowerCase().includes(query) || 
-        p.nombres.toLowerCase().includes(query) || 
-        p.apellidos.toLowerCase().includes(query)
-      );
-    }
-
-    // 3. Exportar a archivo de Excel (.xlsx)
-    exportBtn.addEventListener('click', () => {
-      const datosAExportar = obtenerDatosFiltrados();
-
-      if (datosAExportar.length === 0) {
-        alert("No hay ningún registro para exportar.");
-        return;
+    // Limpiar toda la tabla
+    btnClear.addEventListener('click', () => {
+      if (confirm('¿Deseas eliminar todos los registros agregados?')) {
+        recordsList = [];
+        renderTable();
+        clearAlerts();
       }
+    });
 
-      const excelData = datosAExportar.map((item, index) => ({
-        "Item": index + 1,
-        "DNI": item.dni,
-        "Nombres": item.nombres,
-        "Apellidos": item.apellidos,
-        "Fecha Consulta": item.fecha
+    // Exportar datos a Excel mediante SheetJS
+    btnExport.addEventListener('click', () => {
+      if (recordsList.length === 0) return;
+
+      // Mapeo limpio para cabeceras claras en Excel
+      const excelData = recordsList.map((item, idx) => ({
+        'Item': idx + 1,
+        'DNI': item.dni,
+        'Nombres': item.nombres,
+        'Apellido Paterno': item.apellidoPaterno,
+        'Apellido Materno': item.apellidoMaterno,
+        'Nombre Completo': `${item.nombres} ${item.apellidoPaterno} ${item.apellidoMaterno}`.trim()
       }));
 
       const worksheet = XLSX.utils.json_to_sheet(excelData);
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Lista RENIEC");
-
-      // Auto-ajustar ancho de columnas
+      
+      // Ajuste básico de ancho de columnas
       worksheet['!cols'] = [
         { wch: 6 },
         { wch: 12 },
         { wch: 25 },
-        { wch: 25 },
-        { wch: 20 }
+        { wch: 20 },
+        { wch: 20 },
+        { wch: 45 }
       ];
 
-      XLSX.writeFile(workbook, `Lista_DNI_RENIEC_${new Date().toISOString().split('T')[0]}.xlsx`);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Consultas_RENIEC');
+
+      // Nombre del archivo con marca de fecha
+      const timestamp = new Date().toISOString().slice(0, 10);
+      XLSX.writeFile(workbook, `Consultas_RENIEC_${timestamp}.xlsx`);
     });
 
     // Helpers UI
-    function toggleLoading(isLoading) {
+    function setLoading(isLoading) {
       if (isLoading) {
-        loader.classList.remove('hidden');
-        btnText.textContent = "";
-        btnBuscarDni.disabled = true;
+        spinner.classList.remove('d-none');
+        btnBuscar.disabled = true;
       } else {
-        loader.classList.add('hidden');
-        btnText.textContent = "Buscar";
-        btnBuscarDni.disabled = false;
+        spinner.classList.add('d-none');
+        btnBuscar.disabled = false;
       }
     }
 
-    function mostrarAlerta(mensaje, tipo) {
-      statusAlert.textContent = mensaje;
-      statusAlert.classList.remove('hidden', 'bg-red-50', 'text-red-600', 'bg-green-50', 'text-green-600', 'bg-amber-50', 'text-amber-700');
-      
-      if (tipo === 'error') {
-        statusAlert.classList.add('bg-red-50', 'text-red-600');
-      } else if (tipo === 'exito') {
-        statusAlert.classList.add('bg-green-50', 'text-green-600');
-      } else if (tipo === 'advertencia') {
-        statusAlert.classList.add('bg-amber-50', 'text-amber-700');
-      }
+    function showAlert(message, type) {
+      alertContainer.innerHTML = `
+        <div class="alert alert-${type} alert-dismissible fade show mb-0" role="alert">
+          <i class="fa-solid ${type === 'danger' ? 'fa-triangle-exclamation' : 'fa-circle-check'} me-2"></i>
+          ${message}
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+      `;
     }
 
-    function limpiarAlerta() {
-      statusAlert.textContent = "";
-      statusAlert.classList.add('hidden');
+    function clearAlerts() {
+      alertContainer.innerHTML = '';
     }
   </script>
 </body>
