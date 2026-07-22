@@ -1,332 +1,218 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>DNI Scanner Pro - Baja Luz</title>
-  
-  <!-- Librerías Externas -->
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Buscador e Historial DNI - Exportación Excel</title>
+  <!-- Tailwind CSS para los estilos UI -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Librería SheetJS para exportar a Excel -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-
-  <style>
-    :root {
-      --bg: #0a0e17; --card: #161e2e; --accent: #00f2fe; --accent-dark: #4facfe; --text: #e0e6ed; --danger: #ef4444;
-    }
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
-    body { background-color: var(--bg); color: var(--text); padding: 15px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
-
-    header { text-align: center; margin-bottom: 15px; width: 100%; }
-    header h1 { font-size: 1.4rem; color: var(--accent); text-transform: uppercase; letter-spacing: 1px; }
-    header p { color: #8899ac; font-size: 0.8rem; }
-
-    .main-grid { display: grid; grid-template-columns: 1fr; gap: 15px; width: 100%; max-width: 800px; }
-    @media (min-width: 768px) { .main-grid { grid-template-columns: 1fr 1fr; } }
-
-    .card { background: var(--card); border-radius: 12px; padding: 15px; border: 1px solid #2d3748; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
-    .card h2 { font-size: 1rem; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; color: #a0aec0; }
-
-    /* Visor de Cámara Moderno */
-    .camera-container { position: relative; width: 100%; aspect-ratio: 4/3; background: #000; border-radius: 8px; overflow: hidden; border: 2px solid #2d3748; }
-    video { width: 100%; height: 100%; object-fit: cover; }
-    canvas { display: none; } /* Oculto, usado para procesar */
-    
-    /* Guía visual HUD */
-    .hud-overlay {
-      position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none;
-    }
-    .hud-box {
-      width: 85%; height: 60%; border: 2px solid var(--accent); border-radius: 10px;
-      box-shadow: 0 0 0 999px rgba(0, 0, 0, 0.5); position: relative;
-    }
-    .hud-box::after {
-      content: "ALINEE DNI AQUÍ"; position: absolute; top: -25px; left: 50%; transform: translateX(-50%);
-      color: var(--accent); font-size: 0.7rem; font-weight: bold; white-space: nowrap;
-    }
-    .flash-status { position: absolute; bottom: 10px; right: 10px; font-size: 1.2rem; filter: grayscale(1); transition: 0.3s; }
-    .flash-active { filter: grayscale(0); transform: scale(1.1); }
-
-    /* Botones */
-    .controls { display: grid; grid-template-columns: 1fr; gap: 10px; margin-top: 15px; }
-    button {
-      width: 100%; padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;
-      transition: all 0.2s ease; font-size: 0.9rem; text-transform: uppercase;
-    }
-    .btn-capture { background: linear-gradient(45deg, var(--accent-dark), var(--accent)); color: #000; }
-    .btn-capture:active { transform: scale(0.98); }
-    .btn-capture:disabled { background: #4a5568; color: #a0aec0; cursor: not-allowed; }
-    
-    .btn-export { background: #10b981; color: white; margin-top: auto; }
-    .btn-export:hover { background: #059669; }
-
-    /* Estado */
-    .status-bar { font-size: 0.75rem; color: #a0aec0; background: rgba(0,0,0,0.2); padding: 5px 10px; border-radius: 4px; margin-top: 5px;}
-    .state-loading { color: #f6e05e; }
-    .state-error { color: var(--danger); }
-    .state-ready { color: #48bb78; }
-
-    /* Lista */
-    .list-container { max-height: 250px; overflow-y: auto; border-top: 1px solid #2d3748; margin-top: 10px; }
-    .list-item { padding: 10px 0; border-bottom: 1px solid #2d3748; font-size: 0.8rem; display: grid; grid-template-columns: 1fr 80px; gap: 5px;}
-    .list-item .names { font-weight: bold; color: white; }
-    .list-item .date { color: #8899ac; text-align: right;}
-    .empty-state { text-align: center; color: #4a5568; padding: 20px; font-size: 0.8rem; }
-  </style>
 </head>
-<body>
+<body class="bg-slate-100 text-slate-800 font-sans min-h-screen p-4 md:p-8">
 
-  <header>
-    <h1>DNI Scanner Pro</h1>
-    <p>Optimizado para baja visibilidad y documentos gastados</p>
-    <div id="statusBar" class="status-bar state-loading">Inicializando cámara y OCR...</div>
-  </header>
+  <div class="max-w-4xl mx-auto space-y-6">
+    
+    <!-- Encabezado -->
+    <header class="text-center md:text-left border-b border-slate-200 pb-4">
+      <h1 class="text-2xl md:text-3xl font-bold text-slate-900">Gestor y Registro por DNI</h1>
+      <p class="text-slate-500 text-sm mt-1">Busca, registra y exporta datos de ciudadanos a un archivo de Excel.</p>
+    </header>
 
-  <div class="main-grid">
-    <!-- Panel Izquierdo: Captura -->
-    <div class="card">
-      <h2>Cámara 
-        <span id="flashIcon" class="flash-status">🔦</span>
-      </h2>
-      <div class="camera-container">
-        <video id="webcam" autoplay playsinline></video>
-        <div class="hud-overlay">
-          <div class="hud-box"></div>
+    <!-- Formulario de Registro / Búsqueda externa -->
+    <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+      <h2 class="text-lg font-semibold mb-3 text-slate-800">1. Registrar nueva persona</h2>
+      <form id="dniForm" class="grid grid-cols-1 md:grid-cols-4 gap-3">
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">DNI</label>
+          <input type="text" id="dniInput" maxlength="8" placeholder="Ingresa DNI (8 dígitos)" required 
+            class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+            pattern="[0-9]{8}" title="Debe contener exactamente 8 números.">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Nombres</label>
+          <input type="text" id="nombreInput" placeholder="Nombres" required 
+            class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Apellidos</label>
+          <input type="text" id="apellidoInput" placeholder="Apellidos" required 
+            class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+        </div>
+        <div class="flex items-end">
+          <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition text-sm flex items-center justify-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+            Agregar
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Lista y Filtros -->
+    <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-4">
+      
+      <div class="flex flex-col md:flex-row justify-between items-center gap-3">
+        <div>
+          <h2 class="text-lg font-semibold text-slate-800">2. Registros agregados</h2>
+          <p class="text-xs text-slate-500" id="totalCount">Total: 0 registros</p>
+        </div>
+
+        <div class="flex items-center gap-2 w-full md:w-auto">
+          <!-- Input para filtrar en vivo la lista -->
+          <input type="text" id="searchFilter" placeholder="Buscar por DNI o Nombre..." 
+            class="w-full md:w-64 px-3 py-1.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+          
+          <!-- Botón Exportar a Excel -->
+          <button id="exportBtn" class="bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-1.5 px-4 rounded-lg transition text-sm flex items-center gap-2 shrink-0">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+            Exportar Excel
+          </button>
         </div>
       </div>
-      
-      <div class="controls">
-        <button id="btnCapture" class="btn-capture" onclick="takePhotoAndOCR()" disabled>
-          Tomar Foto
-        </button>
+
+      <!-- Tabla de Datos -->
+      <div class="overflow-x-auto border border-slate-200 rounded-lg">
+        <table class="w-full text-left text-sm text-slate-600">
+          <thead class="bg-slate-50 text-slate-700 border-b border-slate-200">
+            <tr>
+              <th class="p-3 font-semibold">N°</th>
+              <th class="p-3 font-semibold">DNI</th>
+              <th class="p-3 font-semibold">Nombres</th>
+              <th class="p-3 font-semibold">Apellidos</th>
+              <th class="p-3 font-semibold">Fecha Registro</th>
+              <th class="p-3 font-semibold text-center">Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="tablaResultados" class="divide-y divide-slate-100">
+            <!-- Los registros se generan dinámicamente -->
+          </tbody>
+        </table>
       </div>
+
     </div>
 
-    <!-- Panel Derecho: Lista -->
-    <div class="card" style="display: flex; flex-direction: column;">
-      <h2>Datos Capturados (<span id="counter">0</span>)</h2>
-      
-      <div id="listContainer" class="list-container">
-        <div class="empty-state">No hay registros aún. Use la cámara para escanear un DNI.</div>
-      </div>
-
-      <button class="btn-export" onclick="exportToExcel()">
-        Exportar a Excel (.xlsx)
-      </button>
-    </div>
   </div>
 
-  <!-- Canvas oculto para procesado de imagen agresivo -->
-  <canvas id="procCanvas"></canvas>
-
   <script>
-    const v = document.getElementById('webcam');
-    const pc = document.getElementById('procCanvas');
-    const pctx = pc.getContext('2d');
-    const sBar = document.getElementById('statusBar');
-    const btnC = document.getElementById('btnCapture');
-    const lCon = document.getElementById('listContainer');
-    const count = document.getElementById('counter');
-    const fIcon = document.getElementById('flashIcon');
+    // Arreglo principal para guardar en memoria
+    let baseDatos = [
+      { dni: "12345678", nombres: "Juan Carlos", apellidos: "Pérez Gómez", fecha: "2026-07-20" },
+      { dni: "87654321", nombres: "Maria Luisa", apellidos: "Torres Rojas", fecha: "2026-07-21" }
+    ];
 
-    let records = [];
-    let worker = null;
-    let videoTrack = null;
+    const dniForm = document.getElementById('dniForm');
+    const tablaResultados = document.getElementById('tablaResultados');
+    const searchFilter = document.getElementById('searchFilter');
+    const exportBtn = document.getElementById('exportBtn');
+    const totalCount = document.getElementById('totalCount');
 
-    // 1. Iniciar Cámara y OCR (Cargar el motor una sola vez)
-    async function init() {
-      // A. Cámara
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ 
-          video: { 
-            facingMode: 'environment', 
-            width: { ideal: 1920 }, // Mayor resolución para DNI gastados
-            height: { ideal: 1080 } 
-          } 
-        });
-        v.srcObject = stream;
-        videoTrack = stream.getVideoTracks()[0];
-        
-        // Intentar activar Flash si el dispositivo lo soporta (Solo Android/Chrome HTTPS)
-        tryFlash(true);
+    // Cargar tabla inicial
+    document.addEventListener('DOMContentLoaded', () => {
+      renderTabla(baseDatos);
+    });
 
-      } catch (e) {
-        updateStatus("Error de cámara. Asegúrese de usar HTTPS.", "error");
+    // Renderizar registros en la tabla
+    function renderTabla(datos) {
+      tablaResultados.innerHTML = '';
+      totalCount.textContent = `Total: ${datos.length} registros`;
+
+      if (datos.length === 0) {
+        tablaResultados.innerHTML = `
+          <tr>
+            <td colspan="6" class="p-4 text-center text-slate-400">No se encontraron registros.</td>
+          </tr>`;
         return;
       }
 
-      // B. OCR
-      try {
-        updateStatus("Cargando motor de idiomas (spa)...", "loading");
-        worker = await Tesseract.createWorker('spa', 1, {
-          logger: m => {
-            if(m.status === 'recognizing text') {
-               updateStatus(`Escanenando: ${Math.round(m.progress * 100)}%`, "loading");
-            }
-          }
-        });
-        updateStatus("Listo para escanear", "ready");
-        btnC.disabled = false;
-      } catch (e) {
-        updateStatus("Error cargando OCR.", "error");
-      }
+      datos.forEach((item, index) => {
+        const row = document.createElement('tr');
+        row.className = "hover:bg-slate-50 transition";
+        row.innerHTML = `
+          <td class="p-3 font-mono text-xs text-slate-400">${index + 1}</td>
+          <td class="p-3 font-mono font-medium text-slate-800">${item.dni}</td>
+          <td class="p-3">${item.nombres}</td>
+          <td class="p-3">${item.apellidos}</td>
+          <td class="p-3 text-xs text-slate-500">${item.fecha}</td>
+          <td class="p-3 text-center">
+            <button onclick="eliminarRegistro('${item.dni}')" class="text-red-500 hover:text-red-700 text-xs font-medium">Eliminar</button>
+          </td>
+        `;
+        tablaResultados.appendChild(row);
+      });
     }
 
-    // 2. Control Experimental del Flash
-    async function tryFlash(on) {
-      if (!videoTrack) return;
-      
-      const capabilities = videoTrack.getCapabilities();
-      // Verificamos si el navegador y el hardware soportan 'torch' (linterna)
-      if (capabilities.torch) {
-        try {
-          await videoTrack.applyConstraints({
-            advanced: [{ torch: on }]
-          });
-          if (on) fIcon.classList.add('flash-active');
-          else fIcon.classList.remove('flash-active');
-        } catch (e) {
-          console.log("Flash soportado pero falló al activar.");
-        }
-      } else {
-        console.log("Este dispositivo/navegador no soporta control de flash.");
-      }
-    }
+    // Agregar registro
+    dniForm.addEventListener('submit', (e) => {
+      e.preventDefault();
 
-    // 3. Captura y Pre-procesamiento AGRESIVO (Para luz baja y desgaste)
-    async function takePhotoAndOCR() {
-      if (!worker) return;
-      btnC.disabled = true;
+      const dni = document.getElementById('dniInput').value.trim();
+      const nombres = document.getElementById('nombreInput').value.trim();
+      const apellidos = document.getElementById('apellidoInput').value.trim();
 
-      // Usar resolución nativa del video
-      pc.width = v.videoWidth;
-      pc.height = v.videoHeight;
-      pctx.drawImage(v, 0, 0, pc.width, pc.height);
-
-      // --- ALGORITMO DE MEJORA DE IMAGEN ---
-      updateStatus("Mejorando imagen...", "loading");
-      
-      const imgData = pctx.getImageData(0, 0, pc.width, pc.height);
-      const d = imgData.data;
-
-      // Umbral para binarización (0-255).
-      // En luz baja, un umbral más bajo ayuda a captar letras tenues.
-      const threshold = 110; 
-
-      for (let i = 0; i < d.length; i += 4) {
-        // A. Convertir a Grises (Luminancia)
-        const gray = 0.3 * d[i] + 0.59 * d[i + 1] + 0.11 * d[i + 2];
-        
-        // B. Binarización de alto contraste (Blanco o Negro puro)
-        // Esto elimina sombras y el fondo borroso del DNI gastado
-        const v = gray < threshold ? 0 : 255; 
-
-        d[i] = d[i+1] = d[i+2] = v; // R=G=B
-      }
-      pctx.putImageData(imgData, 0, 0);
-      // -------------------------------------
-
-      // 4. Ejecutar OCR sobre imagen limpia
-      updateStatus("Iniciando lectura...", "loading");
-      try {
-        // Usar canvas procesado, no el video directo
-        const { data: { text } } = await worker.recognize(pc);
-        parseAndSave(text);
-      } catch (e) {
-        updateStatus("Fallo en OCR.", "error");
-      }
-
-      btnC.disabled = false;
-      // Apagar flash tras captura (opcional, para ahorrar batería)
-      // tryFlash(false); 
-    }
-
-    // 5. Extracción de Datos Inteligente (RegEx)
-    function parseAndSave(rawText) {
-      // Limpieza básica
-      const txt = rawText.toUpperCase().replace(/[^A-Z0-9\n\s\/\-]/g, ' '); // Mantener letras, nums, fechas y espacios
-
-      // A. Fecha Nacimiento: Buscar DD/MM/AAAA o DD-MM-AAAA
-      const dateReg = /\b(\d{2})[\/\-](\d{2})[\/\-](\d{4})\b/;
-      const dateMatch = txt.match(dateReg);
-
-      // B. Nombres/Apellidos: Este es el reto en DNI gastados.
-      // Buscamos líneas que contengan las palabras clave y tomamos la línea siguiente.
-      const lines = txt.split('\n').map(l => l.trim()).filter(l => l.length > 2);
-      
-      let ape = "";
-      let nom = "";
-
-      for(let i=0; i < lines.length; i++){
-        // Patrones peruanos comunes
-        if(lines[i].includes("APELLIDO") || lines[i].includes("SURNAME")){
-          ape = lines[i+1] || "";
-        }
-        if(lines[i].includes("NOMBRE") || lines[i].includes("GIVEN")){
-          nom = lines[i+1] || "";
-        }
-      }
-
-      // Limpieza final de etiquetas residuales
-      ape = ape.replace(/APELLIDOS|SURNAME|PRIMER|SEGUNDO/g, "").trim();
-      nom = nom.replace(/NOMBRES|GIVEN NAMES/g, "").trim();
-      const fec = dateMatch ? dateMatch[0] : "No detectada";
-
-      // Validar si capturamos ALGO útil
-      if (ape.length > 2 || nom.length > 2 || dateMatch) {
-        records.push({ ape, nom, fec });
-        updateUI();
-        updateStatus("Datos capturados correctamente", "ready");
-      } else {
-        updateStatus("No se pudo leer datos claros. Reintente.", "error");
-        // Opcional: Mostrar lo que leyó para debug
-        // console.log("Raw OCR:", rawText); 
-      }
-    }
-
-    // 6. Actualizar Interfaz (Lista y Contador)
-    function updateUI() {
-      count.innerText = records.length;
-      
-      if (records.length === 0) {
-        lCon.innerHTML = '<div class="empty-state">No hay registros.</div>';
+      // Validar duplicado
+      if (baseDatos.some(p => p.dni === dni)) {
+        alert("El DNI ingresado ya existe en la lista.");
         return;
       }
 
-      // Mostrar últimos primero
-      const html = records.slice().reverse().map(r => `
-        <div class="list-item">
-          <div>
-            <div class="names">${r.ape}</div>
-            <div class="names">${r.nom}</div>
-          </div>
-          <div class="date">${r.fec}</div>
-        </div>
-      `).join('');
-      lCon.innerHTML = html;
+      const nuevoRegistro = {
+        dni: dni,
+        nombres: nombres,
+        apellidos: apellidos,
+        fecha: new Date().toISOString().split('T')[0]
+      };
+
+      baseDatos.push(nuevoRegistro);
+      renderTabla(baseDatos);
+      dniForm.reset();
+    });
+
+    // Eliminar registro por DNI
+    function eliminarRegistro(dni) {
+      baseDatos = baseDatos.filter(p => p.dni !== dni);
+      renderTabla(obtenerDatosFiltrados());
     }
 
-    function updateStatus(msg, type) {
-      sBar.innerText = msg;
-      sBar.className = `status-bar state-${type}`;
+    // Filtrar en tiempo real mediante el campo de búsqueda
+    searchFilter.addEventListener('input', () => {
+      renderTabla(obtenerDatosFiltrados());
+    });
+
+    function obtenerDatosFiltrados() {
+      const query = searchFilter.value.toLowerCase().trim();
+      return baseDatos.filter(p => 
+        p.dni.toLowerCase().includes(query) ||
+        p.nombres.toLowerCase().includes(query) ||
+        p.apellidos.toLowerCase().includes(query)
+      );
     }
 
-    // 7. Exportar a Excel
-    function exportToExcel() {
-      if (records.length === 0) return alert("No hay datos.");
+    // Exportar la lista filtrada o completa a un archivo de Excel (.xlsx)
+    exportBtn.addEventListener('click', () => {
+      const datosAExportar = obtenerDatosFiltrados();
 
-      const data = records.map(r => ({
-        "Apellidos": r.ape,
-        "Nombres": r.nom,
-        "Fecha Nacimiento": r.fec
+      if (datosAExportar.length === 0) {
+        alert("No hay registros para exportar.");
+        return;
+      }
+
+      // Estructurar los campos para la hoja de Excel
+      const excelData = datosAExportar.map((item, index) => ({
+        "N°": index + 1,
+        "DNI": item.dni,
+        "Nombres": item.nombres,
+        "Apellidos": item.apellidos,
+        "Fecha de Registro": item.fecha
       }));
 
-      const ws = XLSX.utils.json_to_sheet(data);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "DNI_Capturas");
-      XLSX.writeFile(wb, `DNI_Export_${new Date().getTime()}.xlsx`);
-    }
+      // Crear la hoja de trabajo con SheetJS
+      const worksheet = XLSX.utils.json_to_sheet(excelData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Lista DNI");
 
-    window.addEventListener('load', init);
+      // Descargar el archivo
+      XLSX.writeFile(workbook, `Registro_DNI_${new Date().toISOString().split('T')[0]}.xlsx`);
+    });
   </script>
 </body>
 </html>
