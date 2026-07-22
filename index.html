@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Escáner de DNI</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://unpkg.com/@zxing/library@latest"></script>
+</head>
+<body class="bg-slate-100 min-h-screen text-slate-800 font-sans flex flex-col items-center justify-between p-4">
+
+  <!-- Header -->
+  <header class="w-full max-w-md bg-white rounded-2xl shadow-sm p-4 mb-4 flex justify-between items-center border border-slate-200">
+    <div class="flex items-center space-x-3">
+      <div class="bg-blue-600 text-white p-2.5 rounded-xl shadow-md">
+        <i class="fa-solid fa-id-card text-xl"></i>
+      </div>
+      <div>
+        <h1 class="text-lg font-bold leading-tight">Lector de DNI</h1>
+        <p class="text-xs text-slate-500">Escáner de código PDF417</p>
+      </div>
+    </div>
+    <button id="btnConfig" class="p-2.5 text-slate-500 hover:text-blue-600 hover:bg-slate-50 rounded-xl transition-all">
+      <i class="fa-solid fa-gear text-lg"></i>
+    </button>
+  </header>
+
+  <main class="w-full max-w-md flex-1 flex flex-col items-center">
+    
+    <!-- Area del Visor -->
+    <div class="relative w-full aspect-[4/3] bg-slate-900 rounded-3xl overflow-hidden shadow-lg border-2 border-slate-200 mb-4 flex items-center justify-center">
+      
+      <!-- Se añadieron los atributos autoplay, muted y playsinline requeridos por iOS/Android -->
+      <video id="video" class="w-full h-full object-cover hidden" autoplay muted playsinline></video>
+
+      <!-- Guía de escaneo -->
+      <div id="scanOverlay" class="absolute inset-0 border-2 border-dashed border-blue-400/60 rounded-3xl m-6 pointer-events-none hidden flex flex-col justify-between p-4">
+        <div class="flex justify-between">
+          <div class="w-6 h-6 border-t-4 border-l-4 border-blue-500 rounded-tl"></div>
+          <div class="w-6 h-6 border-t-4 border-r-4 border-blue-500 rounded-tr"></div>
+        </div>
+        <div class="text-center">
+          <span class="bg-black/60 text-white text-xs px-3 py-1 rounded-full backdrop-blur-sm">
+            Enfoca el PDF417 al reverso del DNI
+          </span>
+        </div>
+        <div class="flex justify-between">
+          <div class="w-6 h-6 border-b-4 border-l-4 border-blue-500 rounded-bl"></div>
+          <div class="w-6 h-6 border-b-4 border-r-4 border-blue-500 rounded-br"></div>
+        </div>
+      </div>
+
+      <!-- Estado / Botón de inicio -->
+      <div id="cameraPlaceholder" class="text-center p-6 flex flex-col items-center">
+        <div class="w-16 h-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mb-3 text-2xl">
+          <i class="fa-solid fa-camera"></i>
+        </div>
+        <p id="errorMsg" class="text-white text-sm font-medium mb-1">Cámara Inactiva</p>
+        <p id="errorDesc" class="text-slate-400 text-xs mb-4">Haz clic para solicitar permisos y comenzar.</p>
+        <button id="btnStartCamera" class="bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm px-5 py-2.5 rounded-xl shadow-md transition-all flex items-center space-x-2">
+          <i class="fa-solid fa-power-off"></i>
+          <span>Activar Cámara</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Resultados -->
+    <div class="w-full bg-white rounded-3xl shadow-sm border border-slate-200 p-5 flex-1 flex flex-col justify-between">
+      <div>
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-sm font-bold text-slate-400 uppercase tracking-wider">Datos Detectados</h2>
+          <span id="scanStatus" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-600">
+            <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span> En espera
+          </span>
+        </div>
+
+        <div class="space-y-3">
+          <div class="bg-slate-50 p-3.5 rounded-2xl border border-slate-100">
+            <span class="text-xs text-slate-400 font-semibold block mb-0.5">NOMBRES Y APELLIDOS</span>
+            <span id="resNombre" class="text-base font-bold text-slate-800 block">- - -</span>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div class="bg-slate-50 p-3.5 rounded-2xl border border-slate-100">
+              <span class="text-xs text-slate-400 font-semibold block mb-0.5">FECHA NACIMIENTO</span>
+              <span id="resFechaNac" class="text-sm font-bold text-slate-800 block">- - -</span>
+            </div>
+            <div class="bg-slate-50 p-3.5 rounded-2xl border border-slate-100">
+              <span class="text-xs text-slate-400 font-semibold block mb-0.5">N° DOCUMENTO</span>
+              <span id="resNumDoc" class="text-sm font-bold text-slate-800 block">- - -</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <button id="btnReset" class="w-full mt-4 bg-slate-100 hover:bg-slate-200 text-slate-600 font-medium text-sm py-3 rounded-xl transition-all flex justify-center items-center space-x-2">
+        <i class="fa-solid fa-rotate-right"></i>
+        <span>Limpiar Datos</span>
+      </button>
+    </div>
+  </main>
+
+  <!-- Modal Configuración -->
+  <div id="modalConfig" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-3xl max-w-sm w-full p-6 shadow-xl border border-slate-100">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="font-bold text-lg text-slate-800">Configuración</h3>
+        <button id="btnCloseModal" class="text-slate-400 hover:text-slate-600 p-1">
+          <i class="fa-solid fa-xmark text-xl"></i>
+        </button>
+      </div>
+
+      <div class="space-y-4">
+        <div>
+          <label class="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-2">Seleccionar Cámara</label>
+          <select id="selectCamera" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-medium text-slate-700 outline-none focus:border-blue-500">
+            <option value="">Seleccionar opción...</option>
+          </select>
+        </div>
+      </div>
+
+      <button id="btnSaveConfig" class="w-full mt-6 bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 rounded-xl transition-all">
+        Guardar
+      </button>
+    </div>
+  </div>
+
+  <script>
+    let codeReader;
+    let selectedDeviceId = null;
+
+    const video = document.getElementById('video');
+    const cameraPlaceholder = document.getElementById('cameraPlaceholder');
+    const scanOverlay = document.getElementById('scanOverlay');
+    const btnStartCamera = document.getElementById('btnStartCamera');
+    const errorMsg = document.getElementById('errorMsg');
+    const errorDesc = document.getElementById('errorDesc');
+    const selectCamera = document.getElementById('selectCamera');
+
+    window.addEventListener('load', () => {
+      codeReader = new ZXing.BrowserMultiFormatReader();
+    });
+
+    async function startScanning() {
+      // 1. Verificación del protocolo seguro (HTTPS / Localhost)
+      if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+        showError("Acceso Restringido", "Debes ejecutar esta app desde http://localhost o un servidor HTTPS.");
+        return;
+      }
+
+      try {
+        // Pedir permiso explícito al navegador primero
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+        stream.getTracks().forEach(track => track.stop()); // Detener la prueba
+
+        // Listar cámaras tras la concesión de permisos
+        const videoInputDevices = await codeReader.listVideoInputDevices();
+        
+        if (videoInputDevices.length === 0) {
+          showError("Sin Cámaras", "No se detectó ningún dispositivo de cámara disponible.");
+          return;
+        }
+
+        // Seleccionar cámara trasera si existe
+        if (!selectedDeviceId) {
+          const backCam = videoInputDevices.find(d => d.label.toLowerCase().includes('back') || d.label.toLowerCase().includes('trasera') || d.label.toLowerCase().includes('environment'));
+          selectedDeviceId = backCam ? backCam.deviceId : videoInputDevices[0].deviceId;
+        }
+
+        // Actualizar select de configuración
+        selectCamera.innerHTML = '';
+        videoInputDevices.forEach(d => {
+          const opt = document.createElement('option');
+          opt.value = d.deviceId;
+          opt.text = d.label || `Cámara`;
+          if (d.deviceId === selectedDeviceId) opt.selected = true;
+          selectCamera.appendChild(opt);
+        });
+
+        // Ocultar placeholder e iniciar video
+        cameraPlaceholder.classList.add('hidden');
+        video.classList.remove('hidden');
+        scanOverlay.classList.remove('hidden');
+
+        // Escanear
+        codeReader.decodeFromVideoDevice(selectedDeviceId, 'video', (result, err) => {
+          if (result) {
+            parseDNICode(result.text);
+          }
+        });
+
+      } catch (err) {
+        console.error("Error al iniciar cámara:", err);
+        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+          showError("Permiso Denegado", "Debes autorizar el uso de la cámara en la barra de tu navegador.");
+        } else if (err.name === 'NotReadableError') {
+          showError("Cámara Ocupada", "Otra aplicación está usando la cámara en este momento.");
+        } else {
+          showError("Error de Cámara", err.message || "No se pudo acceder a la cámara.");
+        }
+      }
+    }
+
+    function showError(title, desc) {
+      errorMsg.textContent = title;
+      errorMsg.classList.add('text-red-400');
+      errorDesc.textContent = desc;
+      cameraPlaceholder.classList.remove('hidden');
+      video.classList.add('hidden');
+      scanOverlay.classList.add('hidden');
+    }
+
+    function parseDNICode(data) {
+      let numDoc = "- - -";
+      let nombres = "- - -";
+      let fechaNac = "- - -";
+
+      if (data.includes('|')) {
+        const parts = data.split('|');
+        if (parts.length >= 4) {
+          numDoc = parts[0] || "- - -";
+          nombres = `${parts[1] || ''} ${parts[2] || ''} ${parts[3] || ''}`.trim();
+          if (parts[4] && parts[4].length >= 8) {
+            const f = parts[4];
+            fechaNac = `${f.substring(6,8)}/${f.substring(4,6)}/${f.substring(0,4)}`;
+          }
+        }
+      } else {
+        const dniMatch = data.match(/\b\d{8}\b/);
+        if (dniMatch) numDoc = dniMatch[0];
+      }
+
+      document.getElementById('resNumDoc').textContent = numDoc;
+      document.getElementById('resNombre').textContent = nombres !== "" ? nombres : "DATOS LEÍDOS";
+      document.getElementById('resFechaNac').textContent = fechaNac;
+
+      const scanStatus = document.getElementById('scanStatus');
+      scanStatus.className = "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-600";
+      scanStatus.innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-500"></span> Escaneado';
+    }
+
+    btnStartCamera.addEventListener('click', startScanning);
+    document.getElementById('btnReset').addEventListener('click', () => {
+      document.getElementById('resNombre').textContent = "- - -";
+      document.getElementById('resFechaNac').textContent = "- - -";
+      document.getElementById('resNumDoc').textContent = "- - -";
+    });
+
+    document.getElementById('btnConfig').addEventListener('click', () => document.getElementById('modalConfig').classList.remove('hidden'));
+    document.getElementById('btnCloseModal').addEventListener('click', () => document.getElementById('modalConfig').classList.add('hidden'));
+    document.getElementById('btnSaveConfig').addEventListener('click', () => {
+      selectedDeviceId = selectCamera.value;
+      document.getElementById('modalConfig').classList.add('hidden');
+      if (codeReader) codeReader.reset();
+      startScanning();
+    });
+  </script>
+</body>
+</html>
