@@ -3,28 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Lector DNI Optimizado</title>
+  <title>Escáner Profesional de DNI</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <script src="https://unpkg.com/@zxing/library@latest"></script>
-  <style>
-    /* Efecto de línea de escaneo */
-    @keyframes scan {
-      0% { top: 0%; }
-      100% { top: 100%; }
-    }
-    .scan-line {
-      position: absolute;
-      height: 2px;
-      width: 100%;
-      background: rgba(59, 130, 246, 0.8);
-      box-shadow: 0 0 8px 2px rgba(59, 130, 246, 0.5);
-      animation: scan 2s linear infinite;
-      display: none;
-    }
-  </style>
+  <!-- Librería de escaneo de alto rendimiento (Html5Qrcode) -->
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 </head>
-<body class="bg-slate-100 min-h-screen text-slate-800 flex flex-col items-center justify-between p-3 antialiased">
+<body class="bg-slate-100 min-h-screen text-slate-800 flex flex-col items-center justify-between p-3 font-sans antialiased">
 
   <!-- Header -->
   <header class="w-full max-w-md bg-white rounded-2xl shadow-sm p-3 mb-3 flex justify-between items-center border border-slate-200">
@@ -33,16 +18,15 @@
         <i class="fa-solid fa-id-card text-xl"></i>
       </div>
       <div>
-        <h1 class="text-base font-bold leading-tight">Lector DNI</h1>
-        <p class="text-xs text-slate-500">Posterior (PDF417)</p>
+        <h1 class="text-base font-bold leading-tight">Lector DNI Pro</h1>
+        <p class="text-xs text-slate-500">Lectura acelerada PDF417</p>
       </div>
     </div>
     <div class="flex space-x-1.5">
-      <!-- Botón Linterna (Flash) -->
-      <button id="btnTorch" class="p-2.5 text-slate-400 hover:text-amber-500 bg-slate-50 hover:bg-slate-100 rounded-xl transition-all hidden">
+      <button id="btnTorch" class="p-2.5 text-slate-400 hover:text-amber-500 bg-slate-50 hover:bg-slate-100 rounded-xl transition-all hidden" title="Linterna">
         <i class="fa-solid fa-bolt text-lg"></i>
       </button>
-      <button id="btnConfig" class="p-2.5 text-slate-500 bg-slate-50 hover:bg-slate-100 rounded-xl transition-all">
+      <button id="btnConfig" class="p-2.5 text-slate-500 bg-slate-50 hover:bg-slate-100 rounded-xl transition-all" title="Configuración">
         <i class="fa-solid fa-gear text-lg"></i>
       </button>
     </div>
@@ -50,40 +34,22 @@
 
   <main class="w-full max-w-md flex-1 flex flex-col items-center">
     
-    <!-- Visor de la cámara -->
+    <!-- Contenedor del Visor de Cámara -->
     <div class="relative w-full aspect-[4/3] bg-black rounded-3xl overflow-hidden shadow-lg border-2 border-slate-200 mb-3 flex items-center justify-center">
       
-      <video id="video" class="w-full h-full object-cover hidden" autoplay muted playsinline></video>
+      <!-- Div donde Html5Qrcode inserta el video -->
+      <div id="reader" class="w-full h-full object-cover"></div>
 
-      <!-- Overlay guía de escaneo RECTANGULAR para DNI -->
-      <div id="scanOverlay" class="absolute inset-0 hidden pointer-events-none flex items-center justify-center p-6">
-        <!-- Area de enfoque rectangular -->
-        <div class="relative w-full h-24 border-2 border-blue-500 rounded-lg shadow-[0_0_0_9999px_rgba(0,0,0,0.6)]">
-          <!-- Esquinas -->
-          <div class="absolute -top-1 -left-1 w-4 h-4 border-t-4 border-l-4 border-white rounded-tl-sm"></div>
-          <div class="absolute -top-1 -right-1 w-4 h-4 border-t-4 border-r-4 border-white rounded-tr-sm"></div>
-          <div class="absolute -bottom-1 -left-1 w-4 h-4 border-b-4 border-l-4 border-white rounded-bl-sm"></div>
-          <div class="absolute -bottom-1 -right-1 w-4 h-4 border-b-4 border-r-4 border-white rounded-br-sm"></div>
-          <!-- Línea animada -->
-          <div id="scanLine" class="scan-line"></div>
+      <!-- Pantalla de Inicio / Permisos -->
+      <div id="cameraPlaceholder" class="absolute inset-0 bg-slate-900 z-10 text-center p-6 flex flex-col items-center justify-center">
+        <div class="w-16 h-16 bg-blue-500/10 text-blue-500 rounded-2xl flex items-center justify-center mb-3 text-2xl border border-blue-500/20">
+          <i class="fa-solid fa-camera"></i>
         </div>
-        <div class="absolute bottom-3 text-center w-full">
-          <span class="bg-blue-600/90 text-white text-[10px] font-bold px-3 py-1 rounded-full backdrop-blur-sm shadow-md">
-            ENFOCA EL CÓDIGO DE BARRAS RECTANGULAR
-          </span>
-        </div>
-      </div>
-
-      <!-- Estado Inicial -->
-      <div id="cameraPlaceholder" class="text-center p-6 flex flex-col items-center">
-        <div class="w-16 h-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mb-3 text-2xl">
-          <i class="fa-solid fa-video"></i>
-        </div>
-        <p id="errorMsg" class="text-white text-sm font-medium mb-1">Cámara Lista</p>
-        <p id="errorDesc" class="text-slate-400 text-xs mb-4">La lectura de DNI requiere buena luz.</p>
-        <button id="btnStartCamera" class="bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm px-5 py-2.5 rounded-xl shadow-md transition-all flex items-center space-x-2">
+        <p id="errorMsg" class="text-white text-sm font-semibold mb-1">Escáner Inactivo</p>
+        <p id="errorDesc" class="text-slate-400 text-xs mb-5 max-w-[250px]">Requiere permisos de cámara y entorno iluminado.</p>
+        <button id="btnStartCamera" class="bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm px-6 py-3 rounded-xl shadow-lg transition-all flex items-center space-x-2">
           <i class="fa-solid fa-power-off"></i>
-          <span>Iniciar Escáner</span>
+          <span>Activar Escáner</span>
         </button>
       </div>
     </div>
@@ -94,7 +60,7 @@
         <div class="flex justify-between items-center mb-3">
           <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Datos Detectados</h2>
           <span id="scanStatus" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-600 border border-amber-100">
-            <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span> Esperando...
+            <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span> Listo para escanear
           </span>
         </div>
 
@@ -117,141 +83,145 @@
         </div>
       </div>
 
-      <button id="btnReset" class="w-full mt-3 bg-slate-100 hover:bg-slate-200 text-slate-600 font-medium text-xs py-2.5 rounded-xl transition-all">
-        Limpiar y Reintentar
+      <button id="btnReset" class="w-full mt-3 bg-slate-100 hover:bg-slate-200 text-slate-600 font-medium text-xs py-3 rounded-xl transition-all flex justify-center items-center space-x-2">
+        <i class="fa-solid fa-rotate-right"></i>
+        <span>Limpiar y Reintentar</span>
       </button>
     </div>
   </main>
 
   <!-- Modal Configuración -->
-  <div id="modalConfig" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50 transition-opacity duration-300">
+  <div id="modalConfig" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
     <div class="bg-white rounded-3xl max-w-sm w-full p-5 shadow-2xl border border-slate-100">
       <div class="flex justify-between items-center mb-4">
-        <h3 class="font-bold text-base text-slate-800">Configuración de Cámara</h3>
+        <h3 class="font-bold text-base text-slate-800">Seleccionar Cámara</h3>
         <button id="btnCloseModal" class="text-slate-400 hover:text-slate-600 p-1">
           <i class="fa-solid fa-xmark text-lg"></i>
         </button>
       </div>
       <div class="space-y-3">
-        <label class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider block">Dispositivo de Video</label>
+        <label class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider block">Cámaras Detectadas</label>
         <select id="selectCamera" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs font-medium text-slate-700 outline-none focus:border-blue-500"></select>
       </div>
       <button id="btnSaveConfig" class="w-full mt-5 bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs py-3 rounded-xl transition-all">
-        Aplicar Cambios
+        Cambiar Cámara
       </button>
     </div>
   </div>
 
   <script>
-    let codeReader;
-    let selectedDeviceId = null;
-    let currentStream = null;
+    let html5QrcodeScanner = null;
+    let selectedCameraId = null;
     let isTorchOn = false;
 
-    // DOM
-    const video = document.getElementById('video');
-    const cameraPlaceholder = document.getElementById('cameraPlaceholder');
-    const scanOverlay = document.getElementById('scanOverlay');
-    const scanLine = document.getElementById('scanLine');
-    const btnStartCamera = document.getElementById('btnStartCamera');
-    const btnTorch = document.getElementById('btnTorch');
-    const selectCamera = document.getElementById('selectCamera');
-
-    // Beep nativo
+    // Sonido Beep nativo (Sintetizado por AudioContext)
     function playBeep() {
       try {
         const ctx = new (window.AudioContext || window.webkitAudioContext)();
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
-        osc.frequency.setValueAtTime(800, ctx.currentTime);
-        gain.gain.setValueAtTime(0.2, ctx.currentTime);
+        osc.frequency.setValueAtTime(950, ctx.currentTime);
+        gain.gain.setValueAtTime(0.15, ctx.currentTime);
         osc.connect(gain);
         gain.connect(ctx.destination);
-        osc.start(); osc.stop(ctx.currentTime + 0.1);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.12);
       } catch (e) {}
     }
 
-    // INICIALIZACIÓN OPTIMIZADA PARA DNI
-    window.addEventListener('load', () => {
-      // 1. Definir formatos: Únicamente PDF417 (del DNI) y QR (por si acaso)
-      const hints = new Map();
-      const formats = [ZXing.BarcodeFormat.PDF_417, ZXing.BarcodeFormat.QR_CODE];
-      hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, formats);
-      
-      // 2. CONFIGURACIÓN EXTREMA: Intentar con más fuerza y precisión
-      hints.set(ZXing.DecodeHintType.TRY_HARDER, true); // <--- CLAVE
-      hints.set(ZXing.DecodeHintType.ASSUME_GS1, true); // Ayuda en ciertos códigos densos
+    // Inicialización del Escáner
+    async function startScanner() {
+      document.getElementById('cameraPlaceholder').classList.add('hidden');
 
-      codeReader = new ZXing.BrowserMultiFormatReader(hints);
-    });
+      if (!html5QrcodeScanner) {
+        html5QrcodeScanner = new Html5Qrcode("reader");
+      }
 
-    async function startScanning() {
       try {
-        // Permisos y lista de cámaras
-        const devices = await codeReader.listVideoInputDevices();
-        if (devices.length === 0) return;
-
-        // Selección automática de cámara trasera
-        if (!selectedDeviceId) {
-          const back = devices.find(d => d.label.toLowerCase().includes('back') || d.label.toLowerCase().includes('trasera') || d.label.toLowerCase().includes('environment'));
-          selectedDeviceId = back ? back.deviceId : devices[0].deviceId;
+        const devices = await Html5Qrcode.getCameras();
+        if (!devices || devices.length === 0) {
+          showError("Sin Cámaras", "No se detectó ningún dispositivo de cámara.");
+          return;
         }
 
-        // Llenar selector config
+        // Poblar selector de cámaras
+        const selectCamera = document.getElementById('selectCamera');
         selectCamera.innerHTML = '';
-        devices.forEach(d => {
+        devices.forEach(dev => {
           const opt = document.createElement('option');
-          opt.value = d.deviceId; opt.text = d.label || `Cámara`;
-          if (d.deviceId === selectedDeviceId) opt.selected = true;
+          opt.value = dev.id;
+          opt.text = dev.label || `Cámara ${selectCamera.length + 1}`;
           selectCamera.appendChild(opt);
         });
 
-        cameraPlaceholder.classList.add('hidden');
-        video.classList.remove('hidden');
-        scanOverlay.classList.remove('hidden');
-        scanLine.style.display = 'block';
+        // Preferir cámara trasera por defecto
+        if (!selectedCameraId) {
+          const backCam = devices.find(d => d.label.toLowerCase().includes('back') || d.label.toLowerCase().includes('trasera') || d.label.toLowerCase().includes('environment'));
+          selectedCameraId = backCam ? backCam.id : devices[0].id;
+        }
+        selectCamera.value = selectedCameraId;
 
-        // Escaneo optimizado
-        codeReader.decodeFromVideoDevice(selectedDeviceId, 'video', (result, err) => {
-          if (result) {
-            playBeep();
-            if (navigator.vibrate) navigator.vibrate(100);
-            parseDNICode(result.text);
+        // Configuración de escaneo para PDF417 y alta frecuencia
+        const config = {
+          fps: 25, // Máxima tasa de refresco
+          qrbox: { width: 280, height: 120 }, // Área rectangular amplia para DNI
+          formatsToSupport: [ Html5QrcodeSupportedFormats.PDF_417, Html5QrcodeSupportedFormats.QR_CODE ],
+          experimentalFeatures: {
+            useBarCodeDetectorIfSupported: true // Usa aceleración por hardware del celular si está disponible
           }
-        });
+        };
 
-        // Soporte linterna
-        setTimeout(checkTorch, 1000);
+        await html5QrcodeScanner.start(
+          selectedCameraId,
+          config,
+          (decodedText) => {
+            playBeep();
+            if (navigator.vibrate) navigator.vibrate(150);
+            parseDNICode(decodedText);
+          },
+          (errorMessage) => {
+            // Ignorar errores de fotogramas sin código
+          }
+        );
+
+        // Habilitar botón de linterna si existe la capacidad
+        checkTorchCapability();
 
       } catch (err) {
-        document.getElementById('errorMsg').textContent = "Error de Permisos";
-        document.getElementById('errorDesc').textContent = "Debes usar HTTPS y permitir la cámara.";
+        showError("Error de Permisos", "Verifica haber concedido acceso a la cámara y estar en HTTPS / Localhost.");
       }
     }
 
-    // Manejo de Linterna
-    async function checkTorch() {
-      if (!video.srcObject) return;
-      currentStream = video.srcObject;
-      const track = currentStream.getVideoTracks()[0];
+    // Comprobar y encender Linterna
+    async function checkTorchCapability() {
+      const btnTorch = document.getElementById('btnTorch');
       try {
-        const capabilities = track.getCapabilities();
+        const capabilities = html5QrcodeScanner.getRunningTrackCapabilities();
         if (capabilities.torch) {
           btnTorch.classList.remove('hidden');
+        } else {
+          btnTorch.classList.add('hidden');
         }
-      } catch (e) {}
+      } catch (e) {
+        btnTorch.classList.add('hidden');
+      }
     }
 
-    btnTorch.addEventListener('click', async () => {
-      const track = currentStream.getVideoTracks()[0];
+    document.getElementById('btnTorch').addEventListener('click', async () => {
+      const btnTorch = document.getElementById('btnTorch');
       isTorchOn = !isTorchOn;
       try {
-        await track.applyConstraints({ advanced: [{ torch: isTorchOn }] });
+        await html5QrcodeScanner.applyVideoConstraints({
+          advanced: [{ torch: isTorchOn }]
+        });
         btnTorch.classList.toggle('text-amber-500', isTorchOn);
-        btnTorch.classList.toggle('text-slate-400', !isTorchOn);
-      } catch (e) {}
+        btnTorch.classList.toggle('bg-amber-50', isTorchOn);
+      } catch (e) {
+        console.error("Error al activar linterna", e);
+      }
     });
 
+    // Parseo de los datos del DNI (PDF417 / QR)
     function parseDNICode(data) {
       let numDoc = "- - -";
       let nombres = "- - -";
@@ -261,7 +231,11 @@
         const parts = data.split('|');
         if (parts.length >= 4) {
           numDoc = parts[0] || "- - -";
-          nombres = `${parts[1] || ''} ${parts[2] || ''} ${parts[3] || ''}`.trim();
+          const ape1 = parts[1] || "";
+          const ape2 = parts[2] || "";
+          const nom = parts[3] || "";
+          nombres = `${ape1} ${ape2} ${nom}`.trim();
+
           if (parts[4] && parts[4].length >= 8) {
             const f = parts[4];
             fechaNac = `${f.substring(6,8)}/${f.substring(4,6)}/${f.substring(0,4)}`;
@@ -270,26 +244,49 @@
       } else {
         const dniMatch = data.match(/\b\d{8}\b/);
         if (dniMatch) numDoc = dniMatch[0];
+
+        const dateMatch = data.match(/(19|20)\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])/);
+        if (dateMatch) {
+          const f = dateMatch[0];
+          fechaNac = `${f.substring(6,8)}/${f.substring(4,6)}/${f.substring(0,4)}`;
+        }
       }
 
       document.getElementById('resNumDoc').textContent = numDoc;
-      document.getElementById('resNombre').textContent = nombres !== "" ? nombres : "DATOS LEÍDOS";
+      document.getElementById('resNombre').textContent = nombres !== "" ? nombres : "Lectura ejecutada";
       document.getElementById('resFechaNac').textContent = fechaNac;
 
       const scanStatus = document.getElementById('scanStatus');
       scanStatus.className = "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-600 border border-emerald-100";
-      scanStatus.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Escaneado';
+      scanStatus.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> ¡Escaneado con Éxito!';
     }
 
-    btnStartCamera.addEventListener('click', startScanning);
-    document.getElementById('btnReset').addEventListener('click', () => location.reload());
+    function showError(title, desc) {
+      document.getElementById('cameraPlaceholder').classList.remove('hidden');
+      document.getElementById('errorMsg').textContent = title;
+      document.getElementById('errorDesc').textContent = desc;
+    }
+
+    // Controladores de Eventos
+    document.getElementById('btnStartCamera').addEventListener('click', startScanner);
+    document.getElementById('btnReset').addEventListener('click', () => {
+      document.getElementById('resNombre').textContent = "- - -";
+      document.getElementById('resFechaNac').textContent = "- - -";
+      document.getElementById('resNumDoc').textContent = "- - -";
+      const scanStatus = document.getElementById('scanStatus');
+      scanStatus.className = "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-600 border border-amber-100";
+      scanStatus.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span> Listo para escanear';
+    });
+
     document.getElementById('btnConfig').addEventListener('click', () => document.getElementById('modalConfig').classList.remove('hidden'));
     document.getElementById('btnCloseModal').addEventListener('click', () => document.getElementById('modalConfig').classList.add('hidden'));
-    document.getElementById('btnSaveConfig').addEventListener('click', () => {
-      selectedDeviceId = selectCamera.value;
+    document.getElementById('btnSaveConfig').addEventListener('click', async () => {
+      selectedCameraId = document.getElementById('selectCamera').value;
       document.getElementById('modalConfig').classList.add('hidden');
-      if (codeReader) codeReader.reset();
-      startScanning();
+      if (html5QrcodeScanner && html5QrcodeScanner.isScanning) {
+        await html5QrcodeScanner.stop();
+      }
+      startScanner();
     });
   </script>
 </body>
