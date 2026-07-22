@@ -1,333 +1,283 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Escáner Ultrarrápido DNI</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <!-- ZXing con configuración de alto rendimiento y decodificación intensiva -->
-  <script src="https://unpkg.com/@zxing/library@0.19.1/umd/index.min.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Captura de DNI & OCR Avanzado</title>
+  
+  <!-- Estilos UI -->
   <style>
-    /* Visor personalizado sin distorsión */
-    #interactive video {
-      width: 100% !important;
-      height: 100% !important;
-      object-fit: cover !important;
+    :root {
+      --bg-color: #0f172a;
+      --card-bg: #1e293b;
+      --accent: #38bdf8;
+      --accent-hover: #0284c7;
+      --text: #f8fafc;
+      --text-dim: #94a3b8;
     }
-    /* Animación de láser de alta precisión */
-    @keyframes fastScan {
-      0% { top: 10%; opacity: 0.3; }
-      50% { opacity: 1; }
-      100% { top: 90%; opacity: 0.3; }
-    }
-    .laser-line {
-      position: absolute;
-      left: 5%;
-      width: 90%;
-      height: 2px;
-      background: #22c55e;
-      box-shadow: 0 0 12px #22c55e, 0 0 2px #ffffff;
-      animation: fastScan 1.2s ease-in-out infinite alternate;
-    }
-  </style>
-</head>
-<body class="bg-slate-950 min-h-screen text-slate-100 font-sans flex flex-col items-center justify-between p-3">
 
-  <!-- Cabecera -->
-  <header class="w-full max-w-md bg-slate-900/90 backdrop-blur border border-slate-800 rounded-2xl p-3 flex justify-between items-center shadow-md">
-    <div class="flex items-center space-x-3">
-      <div class="bg-emerald-500 text-slate-950 p-2 rounded-xl font-black">
-        <i class="fa-solid fa-bolt text-lg"></i>
-      </div>
-      <div>
-        <h1 class="text-sm font-bold text-white leading-none">Escáner DNI Flash</h1>
-        <p class="text-[10px] text-slate-400 mt-0.5">Optimizador PDF417 Ultra-Fast</p>
-      </div>
-    </div>
-    <div class="flex items-center space-x-2">
-      <button id="btnTorch" class="p-2.5 text-slate-400 hover:text-amber-400 bg-slate-800 hover:bg-slate-700 rounded-xl transition-all hidden" title="Linterna">
-        <i class="fa-solid fa-bolt text-sm"></i>
-      </button>
-      <button id="btnConfig" class="p-2.5 text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-xl transition-all">
-        <i class="fa-solid fa-sliders text-sm"></i>
-      </button>
-    </div>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
+    body { background-color: var(--bg-color); color: var(--text); padding: 20px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+
+    header { text-align: center; margin-bottom: 24px; }
+    header h1 { font-size: 1.8rem; color: var(--accent); }
+    header p { color: var(--text-dim); font-size: 0.9rem; margin-top: 4px; }
+
+    .main-container { display: grid; grid-template-columns: 1fr; gap: 20px; width: 100%; max-width: 900px; }
+    @media (min-width: 768px) { .main-container { grid-template-columns: 1fr 1fr; } }
+
+    .card { background: var(--card-bg); border-radius: 12px; padding: 20px; border: 1px solid #334155; }
+    .card h2 { font-size: 1.2rem; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; }
+
+    /* Visor de Cámara */
+    .camera-wrapper { position: relative; width: 100%; height: 260px; background: #000; border-radius: 8px; overflow: hidden; display: flex; justify-content: center; align-items: center; }
+    video, canvas { position: absolute; width: 100%; height: 100%; object-fit: cover; }
+    
+    /* Guía visual para encuadre del DNI */
+    .overlay-guide {
+      position: absolute; width: 85%; height: 70%; border: 2px dashed var(--accent);
+      border-radius: 8px; box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.4);
+      pointer-events: none; display: flex; align-items: flex-start; justify-content: flex-end; padding: 8px;
+    }
+    .overlay-guide span { background: rgba(56, 189, 248, 0.2); color: var(--accent); font-size: 0.75rem; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
+
+    .controls { display: flex; gap: 10px; margin-top: 16px; }
+    button {
+      flex: 1; padding: 12px; border: none; border-radius: 8px; background: var(--accent);
+      color: #000; font-weight: 600; cursor: pointer; transition: background 0.2s;
+    }
+    button:hover { background: var(--accent-hover); color: #fff; }
+    button.btn-export { background: #10b981; color: #fff; }
+    button.btn-export:hover { background: #059669; }
+
+    /* Estado e Indicadores */
+    .status-badge { font-size: 0.8rem; padding: 4px 8px; border-radius: 4px; background: #334155; color: var(--accent); }
+    
+    /* Lista de Capturas */
+    .table-container { overflow-x: auto; max-height: 300px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.85rem; }
+    th, td { padding: 10px; text-align: left; border-bottom: 1px solid #334155; }
+    th { background: #0f172a; color: var(--accent); }
+    tr:hover { background: rgba(255, 255, 255, 0.02); }
+
+    .hidden { display: none; }
+  </style>
+
+  <!-- Librerías Externas para Tratamiento Digital de Imágenes, OCR y Excel -->
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+
+  <header>
+    <h1>Escáner & OCR de DNI</h1>
+    <p>Optimizado para lecturas con baja iluminación y documentos desgastados</p>
   </header>
 
-  <!-- Área del Visor / Cámara -->
-  <main class="w-full max-w-md my-auto flex flex-col items-center">
-    <div class="relative w-full aspect-[4/3] bg-black rounded-3xl overflow-hidden shadow-2xl border border-slate-800 flex items-center justify-center">
+  <div class="main-container">
+    <!-- Sección de Cámara y Procesamiento -->
+    <div class="card">
+      <h2>Captura <span id="status" class="status-badge">Inicializando...</span></h2>
+      <div class="camera-wrapper">
+        <video id="webcam" autoplay playsinline></video>
+        <canvas id="processedCanvas" class="hidden"></canvas>
+        <div class="overlay-guide"><span>Alinee el DNI aquí</span></div>
+      </div>
       
-      <!-- Video Element -->
-      <video id="video" class="w-full h-full object-cover hidden" autoplay muted playsinline></video>
-
-      <!-- Máscara / Visor para PDF417 -->
-      <div id="scanOverlay" class="absolute inset-0 pointer-events-none hidden flex flex-col items-center justify-center p-4">
-        <!-- Oscurecimiento perimetral -->
-        <div class="absolute inset-0 bg-black/40"></div>
-        
-        <!-- Recuadro objetivo centrado con aspecto horizontal de DNI -->
-        <div class="relative w-[92%] h-[35%] border-2 border-emerald-400/80 rounded-xl z-10 shadow-[0_0_0_9999px_rgba(0,0,0,0.5)] bg-transparent">
-          <div class="laser-line"></div>
-          
-          <!-- Esquinas guía -->
-          <div class="absolute -top-1 -left-1 w-3 h-3 border-t-2 border-l-2 border-emerald-400"></div>
-          <div class="absolute -top-1 -right-1 w-3 h-3 border-t-2 border-r-2 border-emerald-400"></div>
-          <div class="absolute -bottom-1 -left-1 w-3 h-3 border-b-2 border-l-2 border-emerald-400"></div>
-          <div class="absolute -bottom-1 -right-1 w-3 h-3 border-b-2 border-r-2 border-emerald-400"></div>
-        </div>
-
-        <span class="absolute bottom-3 z-10 bg-black/80 text-emerald-400 text-[10px] font-bold px-3 py-1 rounded-full backdrop-blur border border-emerald-500/30">
-          ALINEA EL CÓDIGO RECTANGULAR AQUÍ
-        </span>
-      </div>
-
-      <!-- Pantalla de Inicio -->
-      <div id="cameraPlaceholder" class="text-center p-6 flex flex-col items-center z-20">
-        <div class="w-16 h-16 bg-emerald-500/10 text-emerald-400 rounded-2xl flex items-center justify-center mb-3 border border-emerald-500/20">
-          <i class="fa-solid fa-expand text-2xl"></i>
-        </div>
-        <h2 id="statusTitle" class="text-white text-sm font-bold mb-1">Escanear Documento</h2>
-        <p id="statusDesc" class="text-slate-400 text-xs mb-5 max-w-[220px]">Usa la cámara trasera con buena luz para lectura inmediata.</p>
-        <button id="btnStart" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs px-6 py-3 rounded-xl shadow-lg transition-all flex items-center space-x-2">
-          <i class="fa-solid fa-camera"></i>
-          <span>Activar Escáner</span>
-        </button>
+      <div class="controls">
+        <button id="btnCapture" onclick="processAndScan()">Tomar Foto & Capturar</button>
       </div>
     </div>
 
-    <!-- Resultados -->
-    <div class="w-full bg-slate-900/90 border border-slate-800 rounded-3xl p-4 mt-3 shadow-xl">
-      <div class="flex justify-between items-center mb-3">
-        <span class="text-[10px] font-extrabold tracking-wider text-slate-400 uppercase">Resultado</span>
-        <span id="badgeState" class="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700">
-          Inactivo
-        </span>
+    <!-- Sección de Resultados y Exportación -->
+    <div class="card">
+      <h2>
+        Registros Capturados
+        <span id="counter" class="status-badge">0 registros</span>
+      </h2>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Apellidos</th>
+              <th>Nombres</th>
+              <th>F. Nacimiento</th>
+            </tr>
+          </thead>
+          <tbody id="dataTable">
+            <!-- Filas dinámicas -->
+          </tbody>
+        </table>
       </div>
-
-      <div class="space-y-2">
-        <div class="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800">
-          <span class="text-[9px] font-bold text-slate-500 block">APELLIDOS Y NOMBRES</span>
-          <span id="txtNombre" class="text-xs font-bold text-slate-200 block truncate">- - -</span>
-        </div>
-
-        <div class="grid grid-cols-2 gap-2">
-          <div class="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800">
-            <span class="text-[9px] font-bold text-slate-500 block">N° DOCUMENTO</span>
-            <span id="txtDoc" class="text-xs font-bold text-emerald-400 block">- - -</span>
-          </div>
-          <div class="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800">
-            <span class="text-[9px] font-bold text-slate-500 block">FECHA NAC.</span>
-            <span id="txtFecNac" class="text-xs font-bold text-slate-200 block">- - -</span>
-          </div>
-        </div>
+      <div class="controls" style="margin-top: 16px;">
+        <button class="btn-export" onclick="exportToExcel()">Exportar a Excel (.xlsx)</button>
       </div>
-
-      <button id="btnReset" class="w-full mt-3 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs py-2.5 rounded-xl transition-all">
-        Limpiar Escaneo
-      </button>
-    </div>
-  </main>
-
-  <!-- Modal de Configuración -->
-  <div id="modalConfig" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
-    <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-xs w-full p-5 shadow-2xl">
-      <div class="flex justify-between items-center mb-4">
-        <h3 class="font-bold text-sm text-white">Dispositivo de Cámara</h3>
-        <button id="btnCloseModal" class="text-slate-500 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
-      </div>
-      <div class="space-y-3">
-        <label class="text-[10px] font-bold text-slate-400 uppercase">Seleccionar Cámara</label>
-        <select id="selectCam" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs font-medium text-slate-200 outline-none focus:border-emerald-500"></select>
-      </div>
-      <button id="btnSaveConfig" class="w-full mt-5 bg-emerald-500 text-slate-950 font-bold text-xs py-2.5 rounded-xl">
-        Guardar
-      </button>
     </div>
   </div>
 
   <script>
-    let codeReader;
-    let selectedDeviceId = null;
-    let activeStream = null;
-    let isTorchOn = false;
+    const video = document.getElementById('webcam');
+    const canvas = document.getElementById('processedCanvas');
+    const ctx = canvas.getContext('2d');
+    const statusTag = document.getElementById('status');
+    const dataTable = document.getElementById('dataTable');
+    const counterTag = document.getElementById('counter');
 
-    const video = document.getElementById('video');
-    const cameraPlaceholder = document.getElementById('cameraPlaceholder');
-    const scanOverlay = document.getElementById('scanOverlay');
-    const btnStart = document.getElementById('btnStart');
-    const btnTorch = document.getElementById('btnTorch');
-    const selectCam = document.getElementById('selectCam');
+    let capturedRecords = [];
+    let worker = null;
 
-    // Reproducción instantánea de pitido sintetizado (sin retardo por red)
-    function triggerBeep() {
+    // 1. Inicialización de Cámara y Motor Tesseract OCR
+    async function initApp() {
       try {
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(1200, audioCtx.currentTime);
-        gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        osc.start();
-        osc.stop(audioCtx.currentTime + 0.08); // Pitido ultracorto (80ms)
-      } catch (e) {}
-    }
-
-    // Configuración optimizada del motor ZXing para máxima velocidad
-    window.addEventListener('load', () => {
-      const hints = new Map();
-      
-      // 1. Restringir ÚNICAMENTE a PDF417 para no perder tiempo buscando otros formatos
-      hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [ZXing.BarcodeFormat.PDF_417]);
-      
-      // 2. Activar algoritmo intensivo para leer líneas finas o desgastadas
-      hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
-
-      codeReader = new ZXing.BrowserMultiFormatReader(hints);
-    });
-
-    async function initCameraScanner() {
-      try {
-        // Solicitar restricción de alta resolución y enfoque rápido
-        const constraints = {
-          video: {
-            facingMode: { ideal: "environment" },
-            width: { min: 1280, ideal: 1920 },
-            height: { min: 720, ideal: 1080 },
-            focusMode: { ideal: "continuous" }
-          }
-        };
-
-        const devices = await codeReader.listVideoInputDevices();
-        if (devices.length === 0) return;
-
-        // Selección automática de la cámara principal/trasera
-        if (!selectedDeviceId) {
-          const backCam = devices.find(d => 
-            d.label.toLowerCase().includes('back') || 
-            d.label.toLowerCase().includes('trasera') || 
-            d.label.toLowerCase().includes('environment') ||
-            d.label.toLowerCase().includes('0')
-          );
-          selectedDeviceId = backCam ? backCam.deviceId : devices[0].deviceId;
-        }
-
-        // Llenar selector
-        selectCam.innerHTML = '';
-        devices.forEach(d => {
-          const opt = document.createElement('option');
-          opt.value = d.deviceId;
-          opt.text = d.label || `Cámara ${selectCam.length + 1}`;
-          if (d.deviceId === selectedDeviceId) opt.selected = true;
-          selectCam.appendChild(opt);
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+          video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } } 
         });
+        video.srcObject = stream;
 
-        cameraPlaceholder.classList.add('hidden');
-        video.classList.remove('hidden');
-        scanOverlay.classList.remove('hidden');
-
-        // Inicio del bucle de decodificación ultra-rápido
-        codeReader.decodeFromVideoDevice(selectedDeviceId, 'video', (result, err) => {
-          if (result) {
-            triggerBeep();
-            if (navigator.vibrate) navigator.vibrate(100);
-            processData(result.text);
-          }
-        });
-
-        setTimeout(setupTorch, 800);
-
+        statusTag.innerText = "Cargando Motor OCR...";
+        worker = await Tesseract.createWorker('spa');
+        statusTag.innerText = "Listo";
       } catch (err) {
-        document.getElementById('statusTitle').textContent = "Error al iniciar";
-        document.getElementById('statusDesc').textContent = "Debes ejecutarlo desde HTTPS o localhost y permitir la cámara.";
+        statusTag.innerText = "Error de Acceso";
+        alert("Error al acceder a la cámara o cargar la librería OCR: " + err);
       }
     }
 
-    // Configuración de Linterna
-    async function setupTorch() {
-      try {
-        if (video.srcObject) {
-          activeStream = video.srcObject;
-          const track = activeStream.getVideoTracks()[0];
-          const capabilities = track.getCapabilities();
-          if (capabilities.torch) {
-            btnTorch.classList.remove('hidden');
-          }
-        }
-      } catch (e) {}
+    // 2. Filtrado Adaptativo de Imagen (Baja Luz y Desgaste)
+    function applyAdaptivePreprocessing(srcCanvas, ctx) {
+      const imgData = ctx.getImageData(0, 0, srcCanvas.width, srcCanvas.height);
+      const data = imgData.data;
+
+      // Paso A: Convertir a Escala de Grises e Incrementar Contraste
+      for (let i = 0; i < data.length; i += 4) {
+        // Luminancia relativa
+        let gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+        
+        // Aumento de contraste (Ajuste de curva Sigmoide simplificada)
+        gray = (gray - 128) * 1.5 + 128;
+        gray = Math.min(255, Math.max(0, gray));
+
+        data[i] = gray;     // R
+        data[i + 1] = gray; // G
+        data[i + 2] = gray; // B
+      }
+
+      // Paso B: Binarización u Thresholding Otsu simplificado (Elimina sombras)
+      let sum = 0;
+      for (let i = 0; i < data.length; i += 4) sum += data[i];
+      let avgThreshold = sum / (data.length / 4);
+
+      for (let i = 0; i < data.length; i += 4) {
+        let val = data[i] > (avgThreshold * 0.9) ? 255 : 0; // Umbralización para resaltar texto negro
+        data[i] = val;
+        data[i + 1] = val;
+        data[i + 2] = val;
+      }
+
+      ctx.putImageData(imgData, 0, 0);
     }
 
-    btnTorch.addEventListener('click', async () => {
-      if (!activeStream) return;
-      const track = activeStream.getVideoTracks()[0];
-      isTorchOn = !isTorchOn;
-      try {
-        await track.applyConstraints({ advanced: [{ torch: isTorchOn }] });
-        btnTorch.classList.toggle('text-amber-400', isTorchOn);
-      } catch (e) {}
-    });
+    // 3. Captura y Extracción de Texto
+    async function processAndScan() {
+      if (!worker) return;
 
-    // Decodificación acelerada de datos de DNI
-    function processData(data) {
-      let doc = "- - -";
-      let name = "- - -";
-      let date = "- - -";
+      statusTag.innerText = "Procesando...";
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-      // Formato Estándar con delimitadores (DNI Perú / Latinoamérica)
-      if (data.includes('|')) {
-        const p = data.split('|');
-        if (p.length >= 4) {
-          doc = p[0] || "- - -";
-          name = `${p[1] || ''} ${p[2] \vert{}\vert{} ''}${p[3] || ''}`.replace(/\s+/g, ' ').trim();
-          if (p[4] && p[4].length >= 8) {
-            const f = p[4];
-            date = `${f.substring(6,8)}/${f.substring(4,6)}/${f.substring(0,4)}`;
-          }
-        }
+      // Aplicar filtros de imagen para entornos oscuros o con texto desgastado
+      applyAdaptivePreprocessing(canvas, ctx);
+
+      // Realizar OCR sobre la imagen optimizada
+      const { data: { text } } = await worker.recognize(canvas);
+      
+      // Parsear datos mediante Expresiones Regulares (RegEx) adaptadas a patrones de DNI
+      const parsedData = parseDNIText(text);
+
+      if (parsedData.apellidos || parsedData.nombres || parsedData.fechaNacimiento) {
+        capturedRecords.push(parsedData);
+        updateTable();
+        statusTag.innerText = "Capturado";
       } else {
-        // Expresión regular para extracción en bruto
-        const docMatch = data.match(/\b\d{8}\b/);
-        if (docMatch) doc = docMatch[0];
+        statusTag.innerText = "Sin coincidencias";
+        alert("No se lograron identificar los patrones de texto. Asegúrese de centrar bien el documento e iluminar el área.");
+      }
+    }
 
-        const dateMatch = data.match(/(19|20)\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])/);
-        if (dateMatch) {
-          const f = dateMatch[0];
-          date = `${f.substring(6,8)}/${f.substring(4,6)}/${f.substring(0,4)}`;
+    // 4. Extracción por Patrones Regex (Soporta múltiples formatos de DNI)
+    function parseDNIText(rawText) {
+      const cleanText = rawText.toUpperCase();
+
+      // Patrones de fecha común (DD/MM/AAAA, DD-MM-AAAA, DD.MM.AAAA)
+      const dateRegex = /\b(0[1-9]|[12][0-9]|3[01])[\/\.-](0[1-9]|1[012])[\/\.-](19|20)\d\d\b/;
+      const dateMatch = cleanText.match(dateRegex);
+
+      // Extracción de líneas para buscar campos por etiquetas de texto usuales
+      const lines = cleanText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+
+      let apellidos = "";
+      let nombres = "";
+
+      for (let i = 0; i < lines.length; i++) {
+        if (lines[i].includes("APELLIDO") || lines[i].includes("SURNAME")) {
+          apellidos = lines[i + 1] || lines[i];
+        }
+        if (lines[i].includes("NOMBRE") || lines[i].includes("GIVEN")) {
+          nombres = lines[i + 1] || lines[i];
         }
       }
 
-      document.getElementById('txtDoc').textContent = doc;
-      document.getElementById('txtNombre').textContent = name !== "" ? name : "CÓDIGO DETECTADO";
-      document.getElementById('txtFecNac').textContent = date;
+      // Si las etiquetas no se encuentran directamente debido al deterioro del plástico:
+      if (!apellidos && lines.length > 0) apellidos = lines[0].replace(/[^A-Z\s]/g, '');
+      if (!nombres && lines.length > 1) nombres = lines[1].replace(/[^A-Z\s]/g, '');
 
-      const badge = document.getElementById('badgeState');
-      badge.className = "text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
-      badge.textContent = "¡Escaneado!";
+      return {
+        apellidos: apellidos.replace(/(APELLIDOS|SURNAME|PRIMER|SEGUNDO)/g, '').trim(),
+        nombres: nombres.replace(/(NOMBRES|GIVEN|NAME)/g, '').trim(),
+        fechaNacimiento: dateMatch ? dateMatch[0] : "No detectada"
+      };
     }
 
-    // Controles UI
-    btnStart.addEventListener('click', initCameraScanner);
-    
-    document.getElementById('btnReset').addEventListener('click', () => {
-      document.getElementById('txtDoc').textContent = "- - -";
-      document.getElementById('txtNombre').textContent = "- - -";
-      document.getElementById('txtFecNac').textContent = "- - -";
-      const badge = document.getElementById('badgeState');
-      badge.className = "text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700";
-      badge.textContent = "Esperando";
-    });
+    // 5. Renderizado en Tabla
+    function updateTable() {
+      dataTable.innerHTML = "";
+      capturedRecords.forEach(rec => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${rec.apellidos || '—'}</td>
+          <td>${rec.nombres || '—'}</td>
+          <td>${rec.fechaNacimiento || '—'}</td>
+        `;
+        dataTable.appendChild(row);
+      });
+      counterTag.innerText = `${capturedRecords.length} registros`;
+    }
 
-    document.getElementById('btnConfig').addEventListener('click', () => document.getElementById('modalConfig').classList.remove('hidden'));
-    document.getElementById('btnCloseModal').addEventListener('click', () => document.getElementById('modalConfig').classList.add('hidden'));
-    document.getElementById('btnSaveConfig').addEventListener('click', () => {
-      selectedDeviceId = selectCam.value;
-      document.getElementById('modalConfig').classList.add('hidden');
-      if (codeReader) codeReader.reset();
-      initCameraScanner();
-    });
+    // 6. Exportación a Excel (.xlsx)
+    function exportToExcel() {
+      if (capturedRecords.length === 0) {
+        alert("No hay registros para exportar.");
+        return;
+      }
+
+      // Formatear la estructura para SheetJS
+      const dataToExport = capturedRecords.map(item => ({
+        "Apellidos": item.apellidos,
+        "Nombres": item.nombres,
+        "Fecha de Nacimiento": item.fechaNacimiento
+      }));
+
+      const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Registros_DNI");
+
+      // Descarga del archivo generado
+      XLSX.writeFile(workbook, `Lecturas_DNI_${new Date().toISOString().slice(0,10)}.xlsx`);
+    }
+
+    // Ejecutar inicialización al cargar la ventana
+    window.addEventListener('load', initApp);
   </script>
 </body>
 </html>
