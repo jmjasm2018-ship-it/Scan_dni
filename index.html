@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Escáner de DNI</title>
+  <title>Escáner de DNI con Linterna y Audio</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://unpkg.com/@zxing/library@latest"></script>
@@ -18,31 +18,36 @@
       </div>
       <div>
         <h1 class="text-lg font-bold leading-tight">Lector de DNI</h1>
-        <p class="text-xs text-slate-500">Escáner de código PDF417</p>
+        <p class="text-xs text-slate-500">Escáner PDF417 Optimizado</p>
       </div>
     </div>
-    <button id="btnConfig" class="p-2.5 text-slate-500 hover:text-blue-600 hover:bg-slate-50 rounded-xl transition-all">
-      <i class="fa-solid fa-gear text-lg"></i>
-    </button>
+    <div class="flex space-x-2">
+      <!-- Botón de Linterna -->
+      <button id="btnFlash" class="p-2.5 text-slate-400 hover:text-amber-500 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all hidden" title="Encender Linterna">
+        <i class="fa-solid fa-bolt text-lg"></i>
+      </button>
+      <button id="btnConfig" class="p-2.5 text-slate-500 hover:text-blue-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all">
+        <i class="fa-solid fa-gear text-lg"></i>
+      </button>
+    </div>
   </header>
 
   <main class="w-full max-w-md flex-1 flex flex-col items-center">
     
-    <!-- Area del Visor -->
+    <!-- Visor de la cámara -->
     <div class="relative w-full aspect-[4/3] bg-slate-900 rounded-3xl overflow-hidden shadow-lg border-2 border-slate-200 mb-4 flex items-center justify-center">
       
-      <!-- Se añadieron los atributos autoplay, muted y playsinline requeridos por iOS/Android -->
       <video id="video" class="w-full h-full object-cover hidden" autoplay muted playsinline></video>
 
-      <!-- Guía de escaneo -->
-      <div id="scanOverlay" class="absolute inset-0 border-2 border-dashed border-blue-400/60 rounded-3xl m-6 pointer-events-none hidden flex flex-col justify-between p-4">
+      <!-- Guía de escaneo adaptada a PDF417 (Rectangular) -->
+      <div id="scanOverlay" class="absolute inset-0 border-2 border-dashed border-blue-400/80 rounded-3xl m-4 pointer-events-none hidden flex flex-col justify-between p-3">
         <div class="flex justify-between">
           <div class="w-6 h-6 border-t-4 border-l-4 border-blue-500 rounded-tl"></div>
           <div class="w-6 h-6 border-t-4 border-r-4 border-blue-500 rounded-tr"></div>
         </div>
         <div class="text-center">
-          <span class="bg-black/60 text-white text-xs px-3 py-1 rounded-full backdrop-blur-sm">
-            Enfoca el PDF417 al reverso del DNI
+          <span class="bg-black/70 text-white text-xs px-3 py-1 rounded-full backdrop-blur-sm shadow-md">
+            Coloca el PDF417 (reverso DNI) aquí
           </span>
         </div>
         <div class="flex justify-between">
@@ -51,13 +56,13 @@
         </div>
       </div>
 
-      <!-- Estado / Botón de inicio -->
+      <!-- Pantalla de Inicio -->
       <div id="cameraPlaceholder" class="text-center p-6 flex flex-col items-center">
         <div class="w-16 h-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mb-3 text-2xl">
           <i class="fa-solid fa-camera"></i>
         </div>
         <p id="errorMsg" class="text-white text-sm font-medium mb-1">Cámara Inactiva</p>
-        <p id="errorDesc" class="text-slate-400 text-xs mb-4">Haz clic para solicitar permisos y comenzar.</p>
+        <p id="errorDesc" class="text-slate-400 text-xs mb-4">Haz clic para activar el escáner.</p>
         <button id="btnStartCamera" class="bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm px-5 py-2.5 rounded-xl shadow-md transition-all flex items-center space-x-2">
           <i class="fa-solid fa-power-off"></i>
           <span>Activar Cámara</span>
@@ -115,7 +120,7 @@
         <div>
           <label class="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-2">Seleccionar Cámara</label>
           <select id="selectCamera" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-medium text-slate-700 outline-none focus:border-blue-500">
-            <option value="">Seleccionar opción...</option>
+            <option value="">Cargando opciones...</option>
           </select>
         </div>
       </div>
@@ -129,78 +134,145 @@
   <script>
     let codeReader;
     let selectedDeviceId = null;
+    let videoStream = null;
+    let isTorchOn = false;
 
     const video = document.getElementById('video');
     const cameraPlaceholder = document.getElementById('cameraPlaceholder');
     const scanOverlay = document.getElementById('scanOverlay');
     const btnStartCamera = document.getElementById('btnStartCamera');
+    const btnFlash = document.getElementById('btnFlash');
     const errorMsg = document.getElementById('errorMsg');
     const errorDesc = document.getElementById('errorDesc');
     const selectCamera = document.getElementById('selectCamera');
 
+    // Reproducir un pitido (Beep) usando Web Audio API
+    function playBeepSound() {
+      try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(1000, audioCtx.currentTime); // Frecuencia de 1000Hz (Pitido agudo)
+        gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+
+        oscillator.start();
+        oscillator.stop(audioCtx.currentTime + 0.15); // Duración de 150ms
+      } catch (e) {
+        console.log("Audio no soportado o bloqueado por el navegador.");
+      }
+    }
+
+    // Configuración optimizada de ZXing para PDF417
     window.addEventListener('load', () => {
-      codeReader = new ZXing.BrowserMultiFormatReader();
+      const hints = new Map();
+      const formats = [
+        ZXing.BarcodeFormat.PDF_417,
+        ZXing.BarcodeFormat.QR_CODE
+      ];
+      hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, formats);
+      
+      codeReader = new ZXing.BrowserMultiFormatReader(hints);
     });
 
     async function startScanning() {
-      // 1. Verificación del protocolo seguro (HTTPS / Localhost)
       if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
-        showError("Acceso Restringido", "Debes ejecutar esta app desde http://localhost o un servidor HTTPS.");
+        showError("Acceso Restringido", "Debes usar HTTPS o localhost para encender la cámara.");
         return;
       }
 
       try {
-        // Pedir permiso explícito al navegador primero
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-        stream.getTracks().forEach(track => track.stop()); // Detener la prueba
-
-        // Listar cámaras tras la concesión de permisos
         const videoInputDevices = await codeReader.listVideoInputDevices();
         
         if (videoInputDevices.length === 0) {
-          showError("Sin Cámaras", "No se detectó ningún dispositivo de cámara disponible.");
+          showError("Sin Cámaras", "No se encontró ningún dispositivo de cámara.");
           return;
         }
 
-        // Seleccionar cámara trasera si existe
         if (!selectedDeviceId) {
-          const backCam = videoInputDevices.find(d => d.label.toLowerCase().includes('back') || d.label.toLowerCase().includes('trasera') || d.label.toLowerCase().includes('environment'));
+          const backCam = videoInputDevices.find(d => 
+            d.label.toLowerCase().includes('back') || 
+            d.label.toLowerCase().includes('trasera') || 
+            d.label.toLowerCase().includes('environment')
+          );
           selectedDeviceId = backCam ? backCam.deviceId : videoInputDevices[0].deviceId;
         }
 
-        // Actualizar select de configuración
+        // Llenar selector
         selectCamera.innerHTML = '';
         videoInputDevices.forEach(d => {
           const opt = document.createElement('option');
           opt.value = d.deviceId;
-          opt.text = d.label || `Cámara`;
+          opt.text = d.label || `Cámara ${selectCamera.length + 1}`;
           if (d.deviceId === selectedDeviceId) opt.selected = true;
           selectCamera.appendChild(opt);
         });
 
-        // Ocultar placeholder e iniciar video
         cameraPlaceholder.classList.add('hidden');
         video.classList.remove('hidden');
         scanOverlay.classList.remove('hidden');
 
-        // Escanear
+        // Escaneo continuo optimizado
         codeReader.decodeFromVideoDevice(selectedDeviceId, 'video', (result, err) => {
           if (result) {
+            playBeepSound();
+            if (navigator.vibrate) navigator.vibrate(150);
             parseDNICode(result.text);
           }
         });
 
+        // Habilitar opción de Linterna si el dispositivo lo soporta
+        setTimeout(checkTorchSupport, 1000);
+
       } catch (err) {
-        console.error("Error al iniciar cámara:", err);
-        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-          showError("Permiso Denegado", "Debes autorizar el uso de la cámara en la barra de tu navegador.");
-        } else if (err.name === 'NotReadableError') {
-          showError("Cámara Ocupada", "Otra aplicación está usando la cámara en este momento.");
-        } else {
-          showError("Error de Cámara", err.message || "No se pudo acceder a la cámara.");
-        }
+        showError("Error de Cámara", "Asegúrate de haber otorgado los permisos necesarios.");
       }
     }
+
+    // Verificar y habilitar el botón de la linterna
+    async function checkTorchSupport() {
+      try {
+        if (video.srcObject) {
+          videoStream = video.srcObject;
+          const track = videoStream.getVideoTracks()[0];
+          const capabilities = track.getCapabilities();
+
+          if (capabilities.torch) {
+            btnFlash.classList.remove('hidden');
+          } else {
+            btnFlash.classList.add('hidden');
+          }
+        }
+      } catch (e) {
+        btnFlash.classList.add('hidden');
+      }
+    }
+
+    // Alternar Linterna Encendida/Apagada
+    btnFlash.addEventListener('click', async () => {
+      if (!videoStream) return;
+      const track = videoStream.getVideoTracks()[0];
+      try {
+        isTorchOn = !isTorchOn;
+        await track.applyConstraints({
+          advanced: [{ torch: isTorchOn }]
+        });
+        
+        if (isTorchOn) {
+          btnFlash.classList.add('text-amber-500', 'bg-amber-50');
+          btnFlash.classList.remove('text-slate-400');
+        } else {
+          btnFlash.classList.remove('text-amber-500', 'bg-amber-50');
+          btnFlash.classList.add('text-slate-400');
+        }
+      } catch (err) {
+        console.error("No se pudo activar la linterna", err);
+      }
+    });
 
     function showError(title, desc) {
       errorMsg.textContent = title;
@@ -211,28 +283,44 @@
       scanOverlay.classList.add('hidden');
     }
 
+    // Extrae correctamente la información del código PDF417
     function parseDNICode(data) {
       let numDoc = "- - -";
       let nombres = "- - -";
       let fechaNac = "- - -";
 
+      // Formato con separadores '|' (DNI Peruano / Latinoamericano)
       if (data.includes('|')) {
         const parts = data.split('|');
         if (parts.length >= 4) {
           numDoc = parts[0] || "- - -";
-          nombres = `${parts[1] || ''} ${parts[2] || ''} ${parts[3] || ''}`.trim();
+          
+          // Formatear Apellidos y Nombres
+          const ape1 = parts[1] || "";
+          const ape2 = parts[2] || "";
+          const nom = parts[3] || "";
+          nombres = `${ape1} ${ape2} ${nom}`.trim();
+
+          // Formatear Fecha de Nacimiento (AAAAMMDD -> DD/MM/AAAA)
           if (parts[4] && parts[4].length >= 8) {
             const f = parts[4];
             fechaNac = `${f.substring(6,8)}/${f.substring(4,6)}/${f.substring(0,4)}`;
           }
         }
       } else {
+        // En caso de lectura sin delimitadores |
         const dniMatch = data.match(/\b\d{8}\b/);
         if (dniMatch) numDoc = dniMatch[0];
+
+        const dateMatch = data.match(/(19|20)\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])/);
+        if (dateMatch) {
+          const f = dateMatch[0];
+          fechaNac = `${f.substring(6,8)}/${f.substring(4,6)}/${f.substring(0,4)}`;
+        }
       }
 
       document.getElementById('resNumDoc').textContent = numDoc;
-      document.getElementById('resNombre').textContent = nombres !== "" ? nombres : "DATOS LEÍDOS";
+      document.getElementById('resNombre').textContent = nombres !== "" ? nombres : "Lectura ejecutada";
       document.getElementById('resFechaNac').textContent = fechaNac;
 
       const scanStatus = document.getElementById('scanStatus');
@@ -241,10 +329,14 @@
     }
 
     btnStartCamera.addEventListener('click', startScanning);
+    
     document.getElementById('btnReset').addEventListener('click', () => {
       document.getElementById('resNombre').textContent = "- - -";
       document.getElementById('resFechaNac').textContent = "- - -";
       document.getElementById('resNumDoc').textContent = "- - -";
+      const scanStatus = document.getElementById('scanStatus');
+      scanStatus.className = "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-600";
+      scanStatus.innerHTML = '<span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span> En espera';
     });
 
     document.getElementById('btnConfig').addEventListener('click', () => document.getElementById('modalConfig').classList.remove('hidden'));
